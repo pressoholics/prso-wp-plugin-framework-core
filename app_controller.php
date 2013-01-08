@@ -180,34 +180,80 @@ class PrsoCoreAppController extends PrsoCoreConfig {
 		//Init vars
 		$scan		= NULL; //Cache result of dir scan
 		$file		= NULL;
+		$view_files = array();
 		$defaults 	= array(
-			'plugin_views_dir' => NULL
+			'plugin_views_dir' 			=> NULL,
+			'plugin_child_views_dir'	=> NULL
 		);
 		
 		$args = wp_parse_args( $args, $defaults );
 		
 		extract( $args );
 		
-		if( isset( $plugin_views_dir ) ) {
+		//Support child themes by first checking for a child theme views directory
+		if( isset($plugin_child_views_dir) ) {
 			
-			$scan = scandir( $plugin_views_dir );
- 			
- 			//Loop scandir result and store any found dirs in $result
- 			foreach( $scan as $file ) {
- 				if( !empty($file) && is_string($file) ) {
- 					
- 					//Confirm $file is a php file
- 					if( preg_match('/\.php$/i', $file) ) {
- 						$view_files[] = $file;
- 					}
-
- 				}
- 			}
+			//Scan for files in child theme's prso_framwork folder
+			$view_files = $this->return_view_files( $plugin_child_views_dir );
+			
+			//See if we found any view files in the child theme
+			if( empty($view_files) ) {
+				
+				//No files found or folder does not exsist in child theme, run on parent
+				$view_files = $this->return_view_files( $plugin_views_dir );
+				
+			}
+			
+		} elseif( isset($plugin_views_dir) && $plugin_child_views_dir === NULL ) {
+			
+			//Scan for files in main "parent" directory
+			$view_files = $this->return_view_files( $plugin_views_dir );
 			
 		}
 		
 		return $view_files;
 	}
+ 	
+ 	/**
+	* return_view_files
+	*
+	* Helper to find any php files in a directory, 
+	* Scans the $scan_dir provided and returns an array of each php file found
+	*
+	* @param $scan_dir string - path to directory you wish to scan for php files
+	*/
+ 	private function return_view_files( $scan_dir = NULL ) {
+	 	
+	 	//Init vars
+	 	$scan		= NULL; //Cache result of dir scan
+		$file		= NULL;
+	 	$results	= array();
+	 	
+	 	if( isset($scan_dir) ) {
+		 	
+		 	$scan = scandir( $scan_dir );
+ 			
+ 			//Check dir is valid
+ 			if( $scan !== FALSE ) {
+	 			
+	 			//Loop scandir result and store any found dirs in $result
+	 			foreach( $scan as $file ) {
+	 				if( !empty($file) && is_string($file) ) {
+	 					
+	 					//Confirm $file is a php file
+	 					if( preg_match('/\.php$/i', $file) ) {
+	 						$results[] = $file;
+	 					}
+	
+	 				}
+	 			}
+	 			
+ 			}
+		 	
+	 	}
+	 	
+	 	return $results;
+ 	}
  	
  	/**
 	* load_plugin_views
@@ -221,9 +267,10 @@ class PrsoCoreAppController extends PrsoCoreConfig {
 		
 		//Init vars
 		$defaults = array(
-			'views_scan' 		=> array(),
-			'plugin_class_slug'	=> NULL,
-			'plugin_views_dir'	=> NULL
+			'views_scan' 				=> array(),
+			'plugin_class_slug'			=> NULL,
+			'plugin_views_dir'			=> NULL,
+			'plugin_child_views_dir'	=> NULL
 		);
 		
 		$args = wp_parse_args( $args, $defaults );
@@ -243,17 +290,32 @@ class PrsoCoreAppController extends PrsoCoreConfig {
  				$view_explode[0] = str_replace( ' ', '', $view_explode[0] ); //Remove spaces added to filenames separated with - or _
 				$view_class = $plugin_class_slug . $view_explode[0] . 'View';
  				
- 				//Check if view file exsists
- 				if( file_exists( $plugin_views_dir . '/' . $view ) ) {
- 					
+ 				//Support for Child Themes prso_framwork folder by searching for files here if dir is provided
+ 				if( isset($plugin_child_views_dir) && file_exists( $plugin_child_views_dir . '/' . $view ) ) {
+	 				
  					//include_once admin view file
-					include_once( $plugin_views_dir . '/' . $view );
+					include_once( $plugin_child_views_dir . '/' . $view );
 					
 					//Instantiate class
 					if( class_exists( $view_class ) ) {
 						new $view_class();
 					}
- 					
+	 				
+ 				} else {
+	 				
+	 				//Check if view file exsists
+	 				if( file_exists( $plugin_views_dir . '/' . $view ) ) {
+	 					
+	 					//include_once admin view file
+						include_once( $plugin_views_dir . '/' . $view );
+						
+						//Instantiate class
+						if( class_exists( $view_class ) ) {
+							new $view_class();
+						}
+	 					
+	 				}
+	 				
  				}
  				
  			}
