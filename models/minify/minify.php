@@ -140,6 +140,9 @@ class PrsoCoreMinifyModel {
 		//Parse exceptions
 		$exceptions = wp_parse_args( $exceptions, $exception_defaults );
 		
+		//Add 'depends' scripts to exception list too
+		$exceptions = wp_parse_args( $defaults['depends'], $exceptions );
+		
 		extract( $args );
 		
 		//Sanitize path and url
@@ -235,6 +238,7 @@ class PrsoCoreMinifyModel {
 				if (!file_exists($merged_path)) :
 					file_put_contents($merged_path, 'PRSO Framework Temp File');
 					touch($merged_path, 1);
+					$changes = true;
 				endif;
 				
 				$lastmodified = filemtime($merged_path);
