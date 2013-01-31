@@ -331,20 +331,28 @@ class PrsoCoreMinifyModel {
 				//Style base dir
 				$base_dir = dirname($style->src);
 				
-				//Loop exceptions and cache their handles
-				foreach( $exception_defaults as $exception ) {
-					$excep_dir = "/{$exception}/";
-					
-					if( preg_match( $excep_dir, $base_dir ) ) {
-						$exception_handles[] = $style->handle;
-					}
-				}
+				//Get file's absolute path using the url
+				$file_absolute_path = apply_filters( 'prso_minify_get_file_path', $base_dir );
 				
-				//If style handle is not an exception cache it and dequeue the stylesheet
-				if( !in_array( $style->handle, $exception_handles ) && is_string( $style->src ) ) {
-					$merge_styles[] = $style->src;
-					//Remove style from queue
-					wp_dequeue_style( $style->handle );
+				if( file_exists($file_absolute_path) ) {
+					
+					//Loop exceptions and cache their handles
+					foreach( $exceptions as $exception ) {
+						$excep_dir = "/{$exception}/";
+						
+						if( preg_match( $excep_dir, $base_dir ) ) {
+							$exception_handles[] = $style->handle;
+						}
+					}
+					
+					//If style handle is not an exception cache it and dequeue the stylesheet
+					if( !in_array( $style->handle, $exception_handles ) && is_string( $style->src ) ) {
+						$merge_styles[] = $style->src;
+						//Remove style from queue
+						wp_dequeue_style( $style->handle );
+						
+					}
+					
 				}
 				
 			}
