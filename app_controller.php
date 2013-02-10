@@ -229,7 +229,7 @@ class PrsoCoreAppController extends PrsoCoreConfig {
 		$file		= NULL;
 	 	$results	= array();
 	 	
-	 	if( isset($scan_dir) ) {
+	 	if( isset($scan_dir) && file_exists($scan_dir) ) {
 		 	
 		 	$scan = scandir( $scan_dir );
  			
