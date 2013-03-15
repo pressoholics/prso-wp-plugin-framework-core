@@ -658,7 +658,7 @@ class PrsoCoreAppController extends PrsoCoreConfig {
 			
 			//Init vars
 			$defaults = array(
-				'success_message' 	=> 'Plugin options saved.',
+				'success_message' 	=> 'Options saved.',
 				'fail_message'		=> 'Some fields failed validation. See below for details.'
 			);
 			
