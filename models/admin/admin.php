@@ -340,7 +340,7 @@ class PrsoCoreAdminModel {
 			// switch html display based on the setting type.
 			switch ( $type ) {  
 		        case 'text':  
-		        	$default_class = 'regular-text';
+		        	$default_class = 'prso-regular-text';
 		        	
 		            $default = stripslashes($default);  
 		            $default = esc_attr( $default);  
@@ -413,7 +413,7 @@ class PrsoCoreAdminModel {
 		        break;
 		  		
 		        case 'text_area':  
-		        	$default_class = 'textarea';
+		        	$default_class = 'prso-textarea';
 		        	
 		            $default = stripslashes($default);  
 		            $default = esc_html( $default);  
