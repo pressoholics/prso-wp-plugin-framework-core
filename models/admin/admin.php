@@ -593,6 +593,8 @@ class PrsoCoreAdminModel {
 		                
 		                $_field_name = $field_name . "[]";
 		  				
+		  				echo "<input class='$default_class $field_class' type='hidden' id='$id' name='{$_field_name}' value='' checked='checked' />";
+		  				
 		                echo "<input class='$default_class $field_class' type='checkbox' id='$id-{$item}' name='{$_field_name}' value='{$item}' $checked /> $name <br/>";  
 		            }  
 		            
