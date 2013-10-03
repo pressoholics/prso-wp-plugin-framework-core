@@ -142,7 +142,8 @@ class PrsoCoreFlashModel {
 					<a href="" class="close">&times;</a>
 				</div>
 				<?php
-				$flash = ob_get_flush();
+				$flash = ob_get_contents();
+				ob_end_clean();
 				
 			} elseif( $type === 'error' ) {
 				
@@ -165,7 +166,8 @@ class PrsoCoreFlashModel {
 					<a href="" class="close">&times;</a>
 				</div>
 				<?php
-				$flash = ob_get_flush();
+				$flash = ob_get_contents();
+				ob_end_clean();
 				
 			}
 			
