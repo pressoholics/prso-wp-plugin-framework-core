@@ -45,17 +45,11 @@
 	 		//Scan the plugins dir
 	 		$this->plugins_scan = $this->scan_plugins();
 	 		
-	 		//Scan the views dir
-	 		$this->views_scan = $this->scan_views();
-	 		
 	 		//Instantiate models
 	 		$this->load_models();
 	 		
 	 		//Load general app functions
 	 		$this->load_app_functions();
-	 		
-	 		//If user is admin load wp admin views
-	 		$this->load_admin_views();
 	 		
 	 		//Load third party plugins
 	 		$this->load_plugins();
@@ -157,28 +151,6 @@
  	}
  	
  	/**
-	* scan_views
-	* 
-	* Scans theme framework views dir, caches any files found in
-	* $this->views_scan array.
-	*
-	* Returns false on error
-	* 
-	*/
- 	private function scan_views() {
- 			
- 		//Init vars
- 		$result = false;
- 		$args	= array(
-			'plugin_views_dir' => $this->plugin_views
-		);
- 		 		
- 		$result = apply_filters( 'prso_core_scan_plugin_views', $result, $args );
- 		
- 		return $result;
- 	}
- 	
- 	/**
 	* load_models
 	* 
 	* Checks to see if any valid models where found in $this->models_scan
@@ -224,25 +196,6 @@
  			}
  			
  		}
- 		
- 	}
- 	
- 	/**
-	* load_admin
-	* 
-	* Detects if user is logged in, if so then it detects the theme framework admin view
-	* file in PRSO_PLUGIN_VIEWS dir and creates an instance of the class.
-	* 
-	*/
- 	private function load_admin_views() {
- 		
- 		$args = array(
-			'views_scan' 		=> $this->views_scan,
-			'plugin_class_slug'	=> $this->plugin_class_slug,
-			'plugin_views_dir'	=> $this->plugin_views
-		);
- 		
- 		do_action( 'prso_core_load_plugin_views', $args );
  		
  	}
  	

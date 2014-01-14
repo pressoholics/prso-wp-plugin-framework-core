@@ -279,16 +279,16 @@ class PrsoCoreAdminView extends PrsoCoreFunctions {
  		parent::__construct();
 		
 		//Call method to set plugin view options
-		$this->plugin_view_options();
+		//$this->plugin_view_options();
 		
 		//Call method to cache plugin options data in plugin's $data array - see app_controller.php
-		$this->get_plugin_options( NULL, $this->plugin_options_db_slug );
+		//$this->get_plugin_options( NULL, $this->plugin_options_db_slug );
 		
 		//Add main parent page for theme admin section
- 		add_action('admin_menu', array( &$this, 'add_admin_page' ));
+ 		//add_action('admin_menu', array( &$this, 'add_admin_page' ));
 		
 		//Register sections and define fields
-		add_action('admin_init', array(&$this, 'create_settings'));
+		//add_action('admin_init', array(&$this, 'create_settings'));
 		
 	}
 	
