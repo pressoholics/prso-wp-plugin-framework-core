@@ -53,12 +53,6 @@ if( file_exists( dirname(__FILE__) . '/bootstrap.php' ) ) {
 			
 		}
 		
-	} else {
-		
-		//If there is a class namespace conflict, deactivate class and error out
-		deactivate_plugins( __FILE__ );
-		wp_die( wp_sprintf( '%1s: ' . __( 'Sorry, it appears that you already have a version of the Prso Core installed.', 'prso_core' ), __FILE__ ) );
-		
 	}
 	
 }
