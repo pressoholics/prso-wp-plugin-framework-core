@@ -132,7 +132,7 @@ class PrsoCoreMinifyModel {
 			'merged_path' 		=> NULL, //Full path to your new merged script file -REQ
 			'merged_url'		=> NULL,
 			'depends'			=> array( 'jquery' ), //Array of script handles your merged script depends on
-			'enqueue_handle'	=> 'presso-theme-app-min'
+			'enqueue_handle'	=> 'prso-theme-app'
 		);
 		
 		//Parse args
@@ -173,6 +173,7 @@ class PrsoCoreMinifyModel {
 							
 							//Remove script from queue
 							wp_dequeue_script( $script_handle );
+							wp_deregister_script( $script_handle );
 						} else {
 							
 							//Remove script from queue
@@ -198,7 +199,9 @@ class PrsoCoreMinifyModel {
 			}
 			
 			//Now we have a list of scripts lets minify them
-			$this->minify_scripts( $scripts_src, $merged_path );
+			if (!file_exists($merged_path)) {
+				$this->minify_scripts( $scripts_src, $merged_path );
+			}
 			
 			//Enqueue merged script
 			wp_enqueue_script( $enqueue_handle, $merged_url , $depends, filemtime( $merged_path ), true );
@@ -360,7 +363,9 @@ class PrsoCoreMinifyModel {
 		}
 		
 		//Minify_stylesheets
-		$this->minify_stylesheets( $merge_styles, $merged_path );
+		if( !file_exists($merged_path) ) {
+			$this->minify_stylesheets( $merge_styles, $merged_path );
+		}
 		
 		//Enqueue minifyed stylesheet
     	wp_enqueue_style( $enqueue_handle, $merged_url, $depends, filemtime($merged_path) );
@@ -454,17 +459,22 @@ class PrsoCoreMinifyModel {
 		
 		if( isset($file_url) ) {
 			
-			$file_url = esc_attr( $file_url );
+			$file_url = esc_url( $file_url );
 			
 			//Get file's absolute path using the url
 			$file_url_info 	= parse_url($file_url);
-			$file_path 		= $file_url_info['path'];
 			
-			//Isolate path to wp-content dir used by themes and plugins
-			$file_path = explode('wp-content', $file_path);
+			if( isset($file_url_info['path']) ) {
+				
+				$file_path 		= $file_url_info['path'];
 			
-			if( isset($file_path[1]) && defined('ABSPATH') ) {
-				$file_url = ABSPATH . 'wp-content' . $file_path[1];
+				//Isolate path to wp-content dir used by themes and plugins
+				$file_path = explode('wp-content', $file_path);
+				
+				if( isset($file_path[1]) && defined('ABSPATH') ) {
+					$file_url = ABSPATH . 'wp-content' . $file_path[1];
+				}
+				
 			}
 			
 		}
