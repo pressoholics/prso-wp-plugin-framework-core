@@ -8,37 +8,37 @@ class PrsoCoreAppController extends PrsoCoreConfig {
  		parent::__construct();
 		
 		//Add wordpress action hook for load_plugin_views() so that other plugins can use the core method
-		$this->add_action( 'prso_core_load_plugin_views', 'load_plugin_views', 1, 1 );
+		//$this->add_action( 'prso_core_load_plugin_views', 'load_plugin_views', 1, 1 );
 		
 		//Add wordpress action hook for load_plugin_functions() so that other plugins can use the core method
 		$this->add_action( 'prso_core_load_plugin_functions', 'load_plugin_functions', 1, 1 );
 		
 		//Add wordpress action hook for request_router() so that other plugins can use the core method
-		$this->add_action( 'prso_core_request_router', 'request_router', 1, 1 );
+		//$this->add_action( 'prso_core_request_router', 'request_router', 1, 1 );
 		
 		//Add wordpress action hook for plugin_redirect() so that other plugins can use the core method
 		$this->add_action( 'prso_core_plugin_redirect', 'plugin_redirect', 10, 2 );
 		
 		//Add wordpress filter hook for get_slug() so that other plugins can use the core method
-		$this->add_filter( 'prso_core_get_slug', 'get_slug', 10, 4 );
+		//$this->add_filter( 'prso_core_get_slug', 'get_slug', 10, 4 );
 		
 		//Add wordpress filter hook for load_plugin_app_controller() so that other plugins can use the core method
 		$this->add_filter( 'prso_core_load_plugin_app_controller', 'load_plugin_app_controller', 10, 4 );
 		
 		//Add wordpress filter hook for scan_plugin_views() so that other plugins can use the core method
-		$this->add_filter( 'prso_core_scan_plugin_views', 'scan_plugin_views', 10, 4 );
+		//$this->add_filter( 'prso_core_scan_plugin_views', 'scan_plugin_views', 10, 4 );
 		
 		//Add wordpress filter hook for form_action() so that other plugins can use the core method
-		$this->add_filter( 'prso_core_form_action', 'form_action', 10, 4 );
+		//$this->add_filter( 'prso_core_form_action', 'form_action', 10, 4 );
 		
 		//Add wordpress filter hook for get_options() so that other plugins can use the core method
-		$this->add_filter( 'prso_core_get_options', 'get_plugin_options', 10, 3 );
+		//$this->add_filter( 'prso_core_get_options', 'get_plugin_options', 10, 3 );
 		
 		//Add wordpress filter hook for render_plugin_view() so that other plugins can use the core method
-		$this->add_filter( 'prso_core_render_plugin_view', 'render_plugin_view', 10, 2 );
+		//$this->add_filter( 'prso_core_render_plugin_view', 'render_plugin_view', 10, 2 );
 		
 		//Add wordpress filter hook for validate_plugin_fields() so that other plugins can use the core method
-		$this->add_filter( 'prso_core_validate_plugin_fields', 'validate_plugin_fields', 10, 3 );
+		//$this->add_filter( 'prso_core_validate_plugin_fields', 'validate_plugin_fields', 10, 3 );
 		
 	}
 	
@@ -51,13 +51,11 @@ class PrsoCoreAppController extends PrsoCoreConfig {
 	* @access 	protected
 	* @author	Ben Moody
 	*/
-	private function add_action( $tag = NULL, $method = NULL, $priority = 10, $accepted_args = NULL ) {
+	public function add_action( $tag = NULL, $method = NULL, $priority = 10, $accepted_args = NULL ) {
 		
 		if( isset($tag,$method) ) {
 			//Check that action has not already been added
-			if( !has_action($tag) ) {
 				add_action( $tag, array(&$this, $method), $priority, $accepted_args );
-			}
 		}
 		
 	}
@@ -75,9 +73,7 @@ class PrsoCoreAppController extends PrsoCoreConfig {
 		
 		if( isset($tag,$method) ) {
 			//Check that action has not already been added
-			if( !has_filter($tag) ) {
 				add_filter( $tag, array(&$this, $method), $priority, $accepted_args );
-			}
 		}
 		
 	}

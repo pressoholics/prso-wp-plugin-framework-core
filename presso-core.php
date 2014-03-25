@@ -33,22 +33,18 @@ if( file_exists( dirname(__FILE__) . '/bootstrap.php' ) ) {
 		* Include config file to set core definitions
 		*
 		*/
-		if( file_exists( dirname(__FILE__) . '/config.php' ) ) {
+		include( dirname(__FILE__) . '/config.php' );
+		
+		if( class_exists('PrsoCoreConfig') ) {
 			
-			include( dirname(__FILE__) . '/config.php' );
+			new PrsoCoreConfig();
 			
-			if( class_exists('PrsoCoreConfig') ) {
-				
-				new PrsoCoreConfig();
-				
-				//Core loaded, load rest of plugin core
-				include( dirname(__FILE__) . '/bootstrap.php' );
+			//Core loaded, load rest of plugin core
+			include_once( dirname(__FILE__) . '/bootstrap.php' );
 
-				//Instantiate bootstrap class
-				if( class_exists('PrsoCoreBootstrap') ) {
-					new PrsoCoreBootstrap();
-				}
-				
+			//Instantiate bootstrap class
+			if( class_exists('PrsoCoreBootstrap') ) {
+				new PrsoCoreBootstrap();
 			}
 			
 		}
@@ -91,4 +87,14 @@ function prso_debug( $var, $showHtml = FALSE, $showFrom = TRUE ) {
 		
 	}
 	
+}
+
+/**
+* prso_memory
+* Prints out debug information on memory usage
+*
+*/
+//add_action( 'shutdown', 'prso_memory', 999 );
+function prso_memory( $text = NULL ) {
+	prso_debug( "{$text} Peak: " . memory_get_peak_usage() );
 }

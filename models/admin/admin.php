@@ -44,13 +44,13 @@ class PrsoCoreAdminModel {
 	private function model_custom_wp_actions() {
 		
 		//WP Action hook for $this->load_sections
-		$this->add_action( 'prso_core_option_page_sections', 'load_sections', 10, 2 );
+		//$this->add_action( 'prso_core_option_page_sections', 'load_sections', 10, 2 );
 		
 		//WP Action hook for $this->load_fields
-		$this->add_action( 'prso_core_option_page_fields', 'load_fields', 10, 3 );
+		//$this->add_action( 'prso_core_option_page_fields', 'load_fields', 10, 3 );
 		
 		//WP Action hook for $this->create_settings_fields
-		$this->add_action( 'prso_core_create_setting_fields', 'create_settings_fields', 10, 1 );
+		//$this->add_action( 'prso_core_create_setting_fields', 'create_settings_fields', 10, 1 );
 		
 		//WP Action hook for $this->create_tinymce_plugin
 		$this->add_action( 'prso_core_create_tiny_mce_plugin', 'create_tinymce_shortcode_plugin', 10, 1 );
@@ -60,15 +60,15 @@ class PrsoCoreAdminModel {
 	private function model_custom_wp_filters() {
 		
 		//WP Filter hook for $this->button
-		$this->add_filter( 'prso_core_button', 'button', 1, 4 );
+		//$this->add_filter( 'prso_core_button', 'button', 1, 4 );
 		
 		//WP Filter hook for $this->table
-		$this->add_filter( 'prso_core_table', 'table', 1, 3 );
+		//$this->add_filter( 'prso_core_table', 'table', 1, 3 );
 		
 		//Add filter to call method to replace 'Insert into Post' button text
-		$this->media_uploader_referer = 'presso-admin';
-		$this->media_uploader_btn_text = 'Use this File';
-		$this->add_filter( 'gettext', 'wp_media_uploader_replace_btn_text', 1, 3 );
+		//$this->media_uploader_referer = 'presso-admin';
+		//$this->media_uploader_btn_text = 'Use this File';
+		//$this->add_filter( 'gettext', 'wp_media_uploader_replace_btn_text', 1, 3 );
 		
 		//WP Filter hook to return the regex required to detect a specific WP shortcode
 		$this->add_filter( 'prso_core_shortcode_regex', 'shortcode_regex', 1, 2 );
@@ -88,9 +88,7 @@ class PrsoCoreAdminModel {
 		
 		if( isset($tag,$method) ) {
 			//Check that action has not already been added
-			if( !has_action($tag) ) {
 				add_action( $tag, array($this, $method), $priority, $accepted_args );
-			}
 		}
 		
 	}
@@ -108,9 +106,7 @@ class PrsoCoreAdminModel {
 		
 		if( isset($tag,$method) ) {
 			//Check that action has not already been added
-			if( !has_filter($tag) ) {
 				add_filter( $tag, array($this, $method), $priority, $accepted_args );
-			}
 		}
 		
 	}

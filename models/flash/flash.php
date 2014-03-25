@@ -74,9 +74,7 @@ class PrsoCoreFlashModel {
 		
 		if( isset($tag,$method) ) {
 			//Check that action has not already been added
-			if( !has_action($tag) ) {
 				add_action( $tag, array(&$this, $method), $priority, $accepted_args );
-			}
 		}
 		
 	}
@@ -94,9 +92,7 @@ class PrsoCoreFlashModel {
 		
 		if( isset($tag,$method) ) {
 			//Check that action has not already been added
-			if( !has_filter($tag) ) {
 				add_filter( $tag, array(&$this, $method), $priority, $accepted_args );
-			}
 		}
 		
 	}

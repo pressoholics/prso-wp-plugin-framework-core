@@ -67,23 +67,17 @@
  	}
  	
  	private function load_app_controller() {
- 		
- 		if( file_exists( $this->plugin_root . '/app_controller.php' ) ) {
 		
-			//include_once admin view file
-			include_once( $this->plugin_root . '/app_controller.php' );
+		
+		//include_once admin view file
+		include_once( $this->plugin_root . '/app_controller.php' );
+		
+		//Instantiate class
+		$class_name = $this->plugin_class_slug . 'AppController';
+		
+		new $class_name();
 			
-			//Instantiate class
-			$class_name = $this->plugin_class_slug . 'AppController';
-			if( class_exists( $class_name ) ) {
-				new $class_name();
-				
-				return true;
-			}
-		
-		}
- 		
- 		return false;
+		return true;
  	}
  	
  	/**
@@ -101,19 +95,14 @@
  		$result = false;
  		$scan	= null; //Cache result of dir scan
  		
- 		if( isset($this->plugin_models) ) {
- 			$scan = scandir( $this->plugin_models );
- 			
- 			//Loop scandir result and store any found dirs in $result
- 			foreach( $scan as $dir ) {
- 				//Ignore any root designations
- 				if( !empty($dir) && $dir != '.' && $dir != '..' ) {
- 					if( is_string($dir) ) {
- 						$result[] = $dir;
- 					}
- 				}
- 			}
- 		}
+ 		$result = array(
+		    'admin',
+		    //'flash',
+		    //'mailchimp',
+		    'minify',
+		    'validate',
+		    'wpquery',
+		);
  		
  		return $result;
  	}
@@ -133,19 +122,9 @@
  		$result = false;
  		$scan	= null; //Cache result of dir scan
  		
- 		if( isset($this->plugins_folder) ) {
- 			$scan = scandir( $this->plugins_folder );
- 			
- 			//Loop scandir result and store any found dirs in $result
- 			foreach( $scan as $dir ) {
- 				//Ignore any root designations
- 				if( !empty($dir) && $dir != '.' && $dir != '..' ) {
- 					if( is_string($dir) ) {
- 						$result[] = $dir;
- 					}
- 				}
- 			}
- 		}
+ 		$result = array(
+		    'custom-posts',
+		);
  		
  		return $result;
  	}
@@ -178,21 +157,11 @@
 				$model_global	= $this->plugin_class_slug . ucfirst($model); //Add a unique var name to avoid conflicts
  				$model_path		= $this->plugin_models . '/' . $model_filename . '/' . $model_filename . '.php';
  				
- 				//Check if model file exsists
- 				if( file_exists( $model_path ) ) {
- 					
- 					//First check that a version of this prso class is not already loaded
- 					if( !class_exists( $model_class ) ) { 
-	 					//include_once the model file
-	 					include_once( $model_path );
+				//include_once the model file
+				include_once( $model_path );
+				
+				new $model_class;
 	 					
-	 					//Instantiate class
-	 					if( class_exists( $model_class ) ) {
-	 						new $model_class;
-	 					}
-	 				}
-	 				
- 				}
  			}
  			
  		}
@@ -213,6 +182,7 @@
 			'plugin_class_slug'	=> $this->plugin_class_slug
 		);
  		
+ 		//PrsoCoreAppController::load_plugin_functions( $args );
  		do_action( 'prso_core_load_plugin_functions', $args );
  		
  	}
@@ -225,22 +195,14 @@
 	* 
 	*/
  	private function load_plugins() {
- 		
- 		if( $this->plugins_scan && is_array( $this->plugins_scan ) ) {
  			
- 			//Loop the result of the plugins dir scan and try to include_once the plugin file
- 			foreach( $this->plugins_scan as $plugin ) {
- 				
- 				//Check if plugin file exsists
- 				if( file_exists( $this->plugins_folder . '/' . $plugin . '/' . $plugin . '.php' ) ) {
- 					
- 					//include_once the plugin file
- 					include_once( $this->plugins_folder . '/' . $plugin . '/' . $plugin . '.php' );
-					
- 				}
- 			}
- 			
- 		}
+		//Loop the result of the plugins dir scan and try to include_once the plugin file
+		foreach( $this->plugins_scan as $plugin ) {
+
+		//include_once the plugin file
+		include_once( $this->plugins_folder . '/' . $plugin . '/' . $plugin . '.php' );
+			
+		}
  		
  	}
  	

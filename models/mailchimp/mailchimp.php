@@ -55,10 +55,10 @@ class PrsoCoreMailchimpModel {
 	function __construct() {
 		
 		//Add custom wordpress action hooks for this model
-		$this->model_custom_wp_actions();
+		//$this->model_custom_wp_actions();
 		
 		//Add custom wordpress filter hooks for this model
-		$this->model_custom_wp_filters();
+		//$this->model_custom_wp_filters();
 	}
 	
 	private function model_custom_wp_actions() {
@@ -208,9 +208,7 @@ class PrsoCoreMailchimpModel {
 		
 		if( isset($tag,$method) ) {
 			//Check that action has not already been added
-			if( !has_action($tag) ) {
 				add_action( $tag, array(&$this, $method), $priority, $accepted_args );
-			}
 		}
 		
 	}
@@ -228,9 +226,7 @@ class PrsoCoreMailchimpModel {
 		
 		if( isset($tag,$method) ) {
 			//Check that action has not already been added
-			if( !has_filter($tag) ) {
 				add_filter( $tag, array(&$this, $method), $priority, $accepted_args );
-			}
 		}
 		
 	}
