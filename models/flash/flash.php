@@ -212,14 +212,15 @@ class PrsoCoreFlashModel {
 	* @author	Ben Moody
 	*/
 	public function set_validate_flash( $failed_fields = array() ) {
-	
+		
+		global $prso_flash;
+		
 		if( !empty($failed_fields) ) {
 			//Init vars
 			$name = $this->validate_name;
 			//Save data in session
 			$_SESSION[$name] = $failed_fields;
 		}
-	
 	}
 	
 	/**
@@ -254,7 +255,7 @@ class PrsoCoreFlashModel {
 		
 		if( isset( $_SESSION[$name] ) ) {
 			
-			$failed_fields = $_SESSION[$name];	
+			$failed_fields = $prso_flash[$name];	
 			
 			if( is_array($failed_fields) && !empty($failed_fields) ) {
 				
