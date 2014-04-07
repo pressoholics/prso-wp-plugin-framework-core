@@ -45,7 +45,7 @@ class Cuztom_Initializer
 	private function setup_constants()
 	{
 		if( ! defined( 'CUZTOM_VERSION' ) ) 
-			define( 'CUZTOM_VERSION', '2.9.3' );
+			define( 'CUZTOM_VERSION', '2.9.6' );
 
 		if( ! defined( 'CUZTOM_DIR' ) ) 
 			define( 'CUZTOM_DIR', plugin_dir_path( __FILE__ ) );
@@ -64,41 +64,41 @@ class Cuztom_Initializer
 	private function includes()
 	{
 		include( CUZTOM_DIR . 'classes/cuztom.class.php' );
-		//include( CUZTOM_DIR . 'classes/notice.class.php' );
+		include( CUZTOM_DIR . 'classes/notice.class.php' );
 		include( CUZTOM_DIR . 'classes/post_type.class.php' );
 		include( CUZTOM_DIR . 'classes/taxonomy.class.php' );
-		//include( CUZTOM_DIR . 'classes/sidebar.class.php' );
+		include( CUZTOM_DIR . 'classes/sidebar.class.php' );
 
 		include( CUZTOM_DIR . 'classes/meta.class.php' );
 		include( CUZTOM_DIR . 'classes/meta/meta_box.class.php' );
-		//include( CUZTOM_DIR . 'classes/meta/user_meta.class.php' );
-		//include( CUZTOM_DIR . 'classes/meta/term_meta.class.php' );
+		include( CUZTOM_DIR . 'classes/meta/user_meta.class.php' );
+		include( CUZTOM_DIR . 'classes/meta/term_meta.class.php' );
 		
 		include( CUZTOM_DIR . 'classes/field.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/bundle.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/tabs.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/accordion.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/tab.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/text.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/textarea.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/checkbox.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/yesno.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/select.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/multi_select.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/checkboxes.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/radios.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/wysiwyg.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/image.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/file.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/date.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/time.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/datetime.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/color.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/post_select.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/post_checkboxes.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/term_select.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/term_checkboxes.class.php' );
-		//include( CUZTOM_DIR . 'classes/fields/hidden.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/bundle.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/tabs.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/accordion.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/tab.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/text.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/textarea.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/checkbox.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/yesno.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/select.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/multi_select.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/checkboxes.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/radios.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/wysiwyg.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/image.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/file.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/date.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/time.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/datetime.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/color.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/post_select.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/post_checkboxes.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/term_select.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/term_checkboxes.class.php' );
+		include( CUZTOM_DIR . 'classes/fields/hidden.class.php' );
 
 		include( CUZTOM_DIR . 'functions/post_type.php' );
 		include( CUZTOM_DIR . 'functions/taxonomy.php' );
@@ -134,7 +134,7 @@ class Cuztom_Initializer
 	 */
 	function register_styles()
 	{		
-		wp_register_style( 'cuztom-jquery-ui', 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/themes/base/jquery-ui.css', false, CUZTOM_VERSION, 'screen' );
+		wp_register_style( 'cuztom-jquery-ui', '//ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/themes/base/jquery-ui.css', false, CUZTOM_VERSION, 'screen' );
 		wp_register_style( 'cuztom', CUZTOM_URL . '/assets/css/style.css', false, CUZTOM_VERSION, 'screen' );
 	}
 
@@ -243,5 +243,7 @@ class Cuztom_Initializer
 }
 
 endif; // End class_exists check
+
+Cuztom_Initializer::instance();f; // End class_exists check
 
 Cuztom_Initializer::instance();
