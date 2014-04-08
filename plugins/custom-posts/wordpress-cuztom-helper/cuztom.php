@@ -244,6 +244,6 @@ class Cuztom_Initializer
 
 endif; // End class_exists check
 
-Cuztom_Initializer::instance();f; // End class_exists check
+Cuztom_Initializer::instance(); // End class_exists check
 
 Cuztom_Initializer::instance();
