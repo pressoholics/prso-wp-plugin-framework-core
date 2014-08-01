@@ -1,0 +1,44 @@
+<?php
+/**
+* [REPLACE_NAME] custom taxonomy setup
+* 
+* Generate custom post type and taxonomies using http://generatewp.com
+* 
+* Visit http://generatewp.com, generate the code and paste it into the correct function
+* Be sure to update the text domain to PRSOTHEMEFRAMEWORK__DOMAIN constant for prso themes
+* 
+* @access 	public
+* @author	Ben Moody
+*/
+
+/**
+* Add post filters for these taxonomies to admin area
+* 
+*
+* @access 	public
+* @author	Ben Moody
+*/
+add_action( 'init', '[REPLACE_NAME]_taxonomy_filters', 0 );
+function [REPLACE_NAME]_taxonomy_filters() {
+	
+	/*
+	new Tax_CTP_Filter(array(
+	    'post_type' => array('taxonomy_slug')
+	));
+	*/
+	
+}
+
+/**
+* Register new taxonomy with option to add meta boxes to taxonomy
+* 
+*
+* @access 	public
+* @author	Ben Moody
+*/
+add_action( 'init', '[REPLACE_NAME]_register_taxonomy', 0 );
+function [REPLACE_NAME]_register_taxonomy() {
+	
+	
+	
+}

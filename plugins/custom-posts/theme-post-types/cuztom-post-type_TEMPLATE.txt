@@ -1,0 +1,115 @@
+<?php
+/**
+* Generate custom post type and taxonomies using http://generatewp.com
+* 
+* Visit http://generatewp.com, generate the code and paste it into the correct function
+* Be sure to update the text domain to 'prso-child-theme-domain' == 'prso-child-theme-domain' constant for prso themes
+*
+* Find and replace ba_products with your unqiue post type name
+* 
+* @access 	public
+* @author	Ben Moody
+*/
+
+/**
+* Add post filters for these taxonomies to admin area
+* 
+*
+* @access 	public
+* @author	Ben Moody
+*/
+add_action( 'init', '[REPLACE_NAME]_taxonomy_filters', 0 );
+function [REPLACE_NAME]_taxonomy_filters() {
+	
+	/*
+	new Tax_CTP_Filter(array(
+	    'post_type' => array('taxonomy_slug')
+	));
+	*/
+	
+}
+
+/**
+* Setup post type
+* 
+* First let's register our custom post type
+*
+* @access 	public
+* @author	Ben Moody
+*/
+add_action( 'init', '[REPLACE_NAME]_register_post_type', 1 );
+function [REPLACE_NAME]_register_post_type() {
+	
+	
+	
+}
+
+/**
+* Setup custom taxonomy
+* 
+* Add any custom taxonomy for your custom post type
+*
+* @access 	public
+* @author	Ben Moody
+*/
+//add_action( 'init', '[REPLACE_NAME]_register_taxonomy', 2 );
+function [REPLACE_NAME]_register_taxonomy() {
+	
+		
+}
+
+/**
+* After theme setup
+* 
+* Any actions you need to do for this custom post type after the theme
+* had been setup - e.g. add_image_size
+* 
+* @access 	public
+* @author	Ben Moody
+*/
+add_action( 'after_setup_theme', '[REPLACE_NAME]_theme_setup' );
+function [REPLACE_NAME]_theme_setup() {
+	//add_image_size( '', 100, 75, true );
+}
+
+/**
+* Manage custom post type index view table columns
+* 
+* Add or remove columns from the index table for your custom post type
+* 
+* @access 	public
+* @author	Ben Moody
+*/
+add_filter( 'manage_edit-slide_columns', '[REPLACE_NAME]_columns_filter', 10, 1 );
+function [REPLACE_NAME]_columns_filter( $columns ) {
+	
+	/*
+	$column_thumbnail = array( 
+		'thumbnail' => 'Thumbnail' 
+	);
+	
+	$columns = array_slice( $columns, 0, 1, true ) + $column_thumbnail + array_slice( $columns, 1, NULL, true );
+	*/
+	
+	return $columns;
+}
+
+/**
+* Add content to index view columns
+* 
+* @access 	public
+* @author	Ben Moody
+*/
+add_action( 'manage_posts_custom_column', '[REPLACE_NAME]_column_action', 10, 1 );
+function [REPLACE_NAME]_column_action( $column ) {
+
+	global $post;
+	/*
+	switch ( $column ) {
+		case 'thumbnail':
+			echo get_the_post_thumbnail( $post->ID, 'edit-screen-thumbnail' );
+		break;
+	}
+	*/
+	
+}
