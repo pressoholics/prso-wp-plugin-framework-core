@@ -243,8 +243,8 @@ class acf_field_flexible_content extends acf_field {
 		</li>
 	</ul>
 	
-	<script type="text-html" class="tmpl-popup">
-		<div class="acf-fc-popup">
+	<script type="text-html" class="tmpl-popup"><?php 
+		?><div class="acf-fc-popup">
 			<ul>
 				<?php foreach( $layouts as $layout ): 
 					

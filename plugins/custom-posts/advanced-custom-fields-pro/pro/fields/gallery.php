@@ -95,11 +95,11 @@ class acf_field_gallery extends acf_field {
 	function ajax_get_attachment() {
 	
 		// options
-   		$options = acf_parse_args( $_GET, array(
-			'post_id'					=>	0,
-			'id'						=>	0,
-			'field_key'					=>	'',
-			'nonce'						=>	'',
+   		$options = acf_parse_args( $_POST, array(
+			'post_id'		=>	0,
+			'id'			=>	0,
+			'field_key'		=>	'',
+			'nonce'			=>	'',
 		));
    		
 		
@@ -225,7 +225,7 @@ class acf_field_gallery extends acf_field {
 		// vars
 		$r = array();
 		$order = 'DESC';
-   		$args = acf_parse_args( $_REQUEST, array(
+   		$args = acf_parse_args( $_POST, array(
 			'ids'			=>	0,
 			'sort'			=>	'date',
 			'field_key'		=>	'',

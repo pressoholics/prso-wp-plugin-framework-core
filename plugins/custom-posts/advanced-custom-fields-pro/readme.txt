@@ -2,7 +2,7 @@
 Contributors: elliotcondon
 Tags: custom, field, custom field, advanced, simple fields, magic fields, more fields, repeater, matrix, post, type, text, textarea, file, image, edit, admin
 Requires at least: 3.5.0
-Tested up to: 3.9.1
+Tested up to: 4.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -106,6 +106,51 @@ http://support.advancedcustomfields.com/
 
 
 == Changelog ==
+
+= 5.0.8 =
+* Checkbox field: Fixed PHP error when editing field default value
+* Image field: Added logic to update thumbnail after image has been edited
+* Gallery field: Added logic to update thumbnail after image has been edited
+* Core: Added compatibility for WP4 media grid
+* Core: Fixed Select2 bug where results could not be selected
+* Core: Fixed conditional logic bug showing empty cells in the repeater field
+* Core: Fixed bug where tabify would show blank field groups
+* Core: Minor bug fixes and improvements
+* Language: Added Slovakian translation - thanks to wp.sk
+
+= 5.0.7 =
+* Core: Fixed navigation prompt when saving a field group
+* Checkbox field: Fixed issue with multiple default values (requires save)
+* Tab field: Fixed missing active tabs on page load
+
+= 5.0.6 =
+* Relationship field: Fixed bug preventing values from being removed
+* Taxonomy field: Fixed various JS bugs
+* Core: Added logic to reset inputs after adding a new taxonomy term
+* Core: Added prompt when navigating away from changed data
+* Core: Fixed minor validation bug when tab is hidden by conditional logic
+* Core: Fixed error when showing revision of sub field data
+* Core: Minor bug fixes and improvements
+
+= 5.0.5 =
+* Url field: Added new URL field type with basic 'http' validation
+* WYSIWYG field: Added new setting for customizing tabs (Visual / Text)
+* Relationship field: Added scrolling pagination to choices
+* Post object field: Added scrolling pagination to choices
+* Page link field: Added scrolling pagination to choices
+* Radio field: Fixed bug causing default value to be lost when added as sub field
+* Core: Minor JS improvements
+* Core: Added logic to detect if field groups are translatable (WPML setting) before modifying json path
+* Language: Updated French translation - thanks to Maxime Bernard-Jacquet
+
+= 5.0.4 =
+* WYSIWYG field: Major improvement adding visual and text tabs
+* Image field: Fixed uploadedTo bug on non post edit page
+* Tab field: Fixed various JS bugs
+* Options page: Fixed bug causing field groups with position setting of 'High' to not appear
+* Options page: Added functionality to toggle and save state of postbox
+* Core: Fixed nested bug in get_sub_field_object()
+* Language: Updated Brazil translation - thanks to André Felipe
 
 = 5.0.3 =
 * Gallery field: Added new edit button within sidebar to launch edit/crop popup

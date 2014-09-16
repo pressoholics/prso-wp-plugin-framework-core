@@ -6,7 +6,6 @@
 
 ( function( window, undefined ) {
 	"use strict";
-	var document = window.document;
 
 	/**
 	 * Handles managing all events for whatever you plug it into. Priorities for hooks are based on lowest to highest in
@@ -39,15 +38,15 @@
 		 *
 		 * @param action Must contain namespace.identifier
 		 * @param callback Must be a valid callback function before this action is added
-		 * @param priority Defaults to 10
+		 * @param [priority=10] Used to control when the function is executed in relation to other callbacks bound to the same hook
+		 * @param [context] Supply a value to be used for this
 		 */
-		function addAction( action, callback, priority ) {
-			if( _validateNamespace( action ) === false || typeof callback !== 'function' ) {
-				return MethodsAvailable;
+		function addAction( action, callback, priority, context ) {
+			if( typeof action === 'string' && typeof callback === 'function' ) {
+				priority = parseInt( ( priority || 10 ), 10 );
+				_addHook( 'actions', action, callback, priority, context );
 			}
 
-			priority = parseInt( ( priority || 10 ), 10 );
-			_addHook( 'actions', action, callback, priority );
 			return MethodsAvailable;
 		}
 
@@ -59,11 +58,9 @@
 			var args = Array.prototype.slice.call( arguments );
 			var action = args.shift();
 
-			if( _validateNamespace( action ) === false ) {
-				return MethodsAvailable;
+			if( typeof action === 'string' ) {
+				_runHook( 'actions', action, args );
 			}
-
-			_runHook( 'actions', action, args );
 
 			return MethodsAvailable;
 		}
@@ -72,13 +69,13 @@
 		 * Removes the specified action if it contains a namespace.identifier & exists.
 		 *
 		 * @param action The action to remove
+		 * @param [callback] Callback function to remove
 		 */
-		function removeAction( action ) {
-			if( _validateNamespace( action ) === false ) {
-				return MethodsAvailable;
+		function removeAction( action, callback ) {
+			if( typeof action === 'string' ) {
+				_removeHook( 'actions', action, callback );
 			}
 
-			_removeHook( 'actions', action );
 			return MethodsAvailable;
 		}
 
@@ -87,15 +84,15 @@
 		 *
 		 * @param filter Must contain namespace.identifier
 		 * @param callback Must be a valid callback function before this action is added
-		 * @param priority Defaults to 10
+		 * @param [priority=10] Used to control when the function is executed in relation to other callbacks bound to the same hook
+		 * @param [context] Supply a value to be used for this
 		 */
-		function addFilter( filter, callback, priority ) {
-			if( _validateNamespace( filter ) === false || typeof callback !== 'function' ) {
-				return MethodsAvailable;
+		function addFilter( filter, callback, priority, context ) {
+			if( typeof filter === 'string' && typeof callback === 'function' ) {
+				priority = parseInt( ( priority || 10 ), 10 );
+				_addHook( 'filters', filter, callback, priority );
 			}
 
-			priority = parseInt( ( priority || 10 ), 10 );
-			_addHook( 'filters', filter, callback, priority );
 			return MethodsAvailable;
 		}
 
@@ -104,28 +101,27 @@
 		 * the first argument must always be the filter.
 		 */
 		function applyFilters( /* filter, filtered arg, arg2, ... */ ) {
-
 			var args = Array.prototype.slice.call( arguments );
 			var filter = args.shift();
 
-			if( _validateNamespace( filter ) === false ) {
-				return MethodsAvailable;
+			if( typeof filter === 'string' ) {
+				return _runHook( 'filters', filter, args );
 			}
 
-			return _runHook( 'filters', filter, args );
+			return MethodsAvailable;
 		}
 
 		/**
 		 * Removes the specified filter if it contains a namespace.identifier & exists.
 		 *
 		 * @param filter The action to remove
+		 * @param [callback] Callback function to remove
 		 */
-		function removeFilter( filter ) {
-			if( _validateNamespace( filter ) === false ) {
-				return MethodsAvailable;
+		function removeFilter( filter, callback ) {
+			if( typeof filter === 'string') {
+				_removeHook( 'filters', filter, callback );
 			}
 
-			_removeHook( 'filters', filter );
 			return MethodsAvailable;
 		}
 
@@ -136,28 +132,31 @@
 		 * @param hook The hook (namespace.identifier) to remove
 		 * @private
 		 */
-		function _removeHook( type, hook ) {
-			if( STORAGE[ type ][ hook ] ) {
+		function _removeHook( type, hook, callback, context ) {
+			if ( !STORAGE[ type ][ hook ] ) {
+				return;
+			}
+			if ( !callback ) {
 				STORAGE[ type ][ hook ] = [];
+			} else {
+				var handlers = STORAGE[ type ][ hook ];
+				var i;
+				if ( !context ) {
+					for ( i = handlers.length; i--; ) {
+						if ( handlers[i].callback === callback ) {
+							handlers.splice( i, 1 );
+						}
+					}
+				}
+				else {
+					for ( i = handlers.length; i--; ) {
+						var handler = handlers[i];
+						if ( handler.callback === callback && handler.context === context) {
+							handlers.splice( i, 1 );
+						}
+					}
+				}
 			}
-		}
-
-		/**
-		 * Validates that the hook has both a namespace and an identifier.
-		 *
-		 * @param hook The hook we are checking for namespace and identifier for.
-		 * @return {Boolean} False if it does not contain both or is incorrect. True if it has an appropriate namespace & identifier.
-		 * @private
-		 */
-		function _validateNamespace( hook ) {
-			if( typeof hook !== 'string' ) {
-				return false;
-			}
-			var identifier = hook.replace( /^\s+|\s+$/i, '' ).split( '.' );
-			var namespace = identifier.shift();
-			identifier = identifier.join( '.' );
-
-			return ( namespace !== '' && identifier !== '' );
 		}
 
 		/**
@@ -167,12 +166,14 @@
 		 * @param hook The hook (namespace.identifier) to add to our event manager
 		 * @param callback The function that will be called when the hook is executed.
 		 * @param priority The priority of this hook. Must be an integer.
+		 * @param [context] A value to be used for this
 		 * @private
 		 */
-		function _addHook( type, hook, callback, priority ) {
+		function _addHook( type, hook, callback, priority, context ) {
 			var hookObject = {
 				callback : callback,
-				priority : priority
+				priority : priority,
+				context : context
 			};
 
 			// Utilize 'prop itself' : http://jsperf.com/hasownproperty-vs-in-vs-undefined/19
@@ -219,28 +220,24 @@
 		 * @private
 		 */
 		function _runHook( type, hook, args ) {
-			var hooks = STORAGE[ type ][ hook ];
-			if( typeof hooks === 'undefined' ) {
-				if( type === 'filters' ) {
-					return args[0];
-				}
-				return false;
+			var handlers = STORAGE[ type ][ hook ];
+			
+			if ( !handlers ) {
+				return (type === 'filters') ? args[0] : false;
 			}
 
-			for( var i = 0, len = hooks.length; i < len; i++ ) {
-				if( type === 'actions' ) {
-					hooks[ i ].callback.apply( undefined, args );
+			var i = 0, len = handlers.length;
+			if ( type === 'filters' ) {
+				for ( ; i < len; i++ ) {
+					args[ 0 ] = handlers[ i ].callback.apply( handlers[ i ].context, args );
 				}
-				else {
-					args[ 0 ] = hooks[ i ].callback.apply( undefined, args );
+			} else {
+				for ( ; i < len; i++ ) {
+					handlers[ i ].callback.apply( handlers[ i ].context, args );
 				}
 			}
 
-			if( type === 'actions' ) {
-				return true;
-			}
-
-			return args[ 0 ];
+			return ( type === 'filters' ) ? args[ 0 ] : true;
 		}
 
 		// return all of the publicly available methods
@@ -258,79 +255,71 @@
      Begin acf.js
 ********************************************** */
 
-/*
-*  input.js
-*
-*  All javascript needed for ACF to work
-*
-*  @type	awesome
-*  @date	1/08/13
-*
-*  @param	N/A
-*  @return	N/A
-*/
-
-var acf = {
-	
-	// vars
-	l10n				: {},
-	o					: {},
-	
-	
-	// functions
-	get					: null,
-	update				: null,
-	_e					: null,
-	get_atts			: null,
-	get_fields			: null,
-	get_uniqid			: null,
-	serialize_form		: null,
-	
-	
-	// hooks
-	add_action			: null,
-	remove_action		: null,
-	do_action			: null,
-	add_filter			: null,
-	remove_filter		: null,
-	apply_filters		: null,
-	
-	
-	// modules
-	validation			:	null,
-	conditional_logic	:	null,
-	media				:	null,
-	
-	
-	// fields
-	fields				:	{
-		date_picker		:	null,
-		color_picker	:	null,
-		image			:	null,
-		file			:	null,
-		wysiwyg			:	null,
-		gallery			:	null,
-		relationship	:	null
-	}
-};
+var acf;
 
 (function($){
 	
 	
 	/*
-	*  Functions
+	*  exists
 	*
-	*  These functions interact with the o object, and events
+	*  This function will return true if a jQuery selection exists
 	*
 	*  @type	function
-	*  @date	23/10/13
+	*  @date	8/09/2014
 	*  @since	5.0.0
 	*
-	*  @param	$n/a
-	*  @return	$n/a
+	*  @param	n/a
+	*  @return	(boolean)
 	*/
 	
-	$.extend(acf, {
+	$.fn.exists = function() {
+	
+		return $(this).length>0;
+		
+	};
+	
+	
+	/*
+	*  outerHTML
+	*
+	*  This function will return a string containing the HTML of the selected element
+	*
+	*  @type	function
+	*  @date	19/11/2013
+	*  @since	5.0.0
+	*
+	*  @param	$.fn
+	*  @return	(string)
+	*/
+	
+	$.fn.outerHTML = function() {
+	    
+	    return $(this).get(0).outerHTML;
+	    
+	};
+	
+	
+	acf = {
+		
+		// vars
+		l10n:	{},
+		o:		{},
+		
+		
+		/*
+		*  update
+		*
+		*  This function will update a value found in acf.o
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	k (string) the key
+		*  @param	v (mixed) the value
+		*  @return	n/a
+		*/
 		
 		update : function( k, v ){
 				
@@ -338,33 +327,239 @@ var acf = {
 			
 		},
 		
+		
+		/*
+		*  get
+		*
+		*  This function will return a value found in acf.o
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	k (string) the key
+		*  @return	v (mixed) the value
+		*/
+		
 		get : function( k ){
 			
-			return this.o[ k ] || null;
+			if( typeof this.o[ k ] !== 'undefined' ) {
+				
+				return this.o[ k ];
+				
+			}
+			
+			return null;
 			
 		},
 		
-		_e : function( context, string ){
+		
+		/*
+		*  _e
+		*
+		*  This functiln will return a string found in acf.l10n
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	k1 (string) the first key to look for
+		*  @param	k2 (string) the second key to look for
+		*  @return	string (string)
+		*/
+		
+		_e : function( k1, k2 ){
 			
 			// defaults
-			string = string || false;
+			k2 = k2 || false;
 			
 			
 			// get context
-			var r = this.l10n[ context ] || false;
+			var string = this.l10n[ k1 ] || '';
 			
 			
 			// get string
-			if( string )
-			{
-				r = r[ string ] || false;
+			if( k2 ) {
+			
+				string = string[ k2 ] || '';
+				
 			}
 			
 			
 			// return
-			return r || '';
+			return string;
 			
 		},
+		
+		
+		/*
+		*  add_action
+		*
+		*  This function uses wp.hooks to mimics WP add_action
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	
+		*  @return
+		*/
+		
+		add_action : function() {
+			
+			// allow multiple action parameters such as 'ready append'
+			var actions = arguments[0].split(' ');
+			
+			for( k in actions ) {
+			
+				// prefix action
+				arguments[0] = 'acf.' + actions[ k ];
+				
+				wp.hooks.addAction.apply(this, arguments);
+			}
+			
+			return this;
+			
+		},
+		
+		
+		/*
+		*  remove_action
+		*
+		*  This function uses wp.hooks to mimics WP remove_action
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	
+		*  @return
+		*/
+		
+		remove_action : function() {
+			
+			// prefix action
+			arguments[0] = 'acf.' + arguments[0];
+			
+			wp.hooks.removeAction.apply(this, arguments);
+			
+			return this;
+			
+		},
+		
+		
+		/*
+		*  do_action
+		*
+		*  This function uses wp.hooks to mimics WP do_action
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	
+		*  @return
+		*/
+		
+		do_action : function() {
+			
+			// prefix action
+			arguments[0] = 'acf.' + arguments[0];
+			
+			wp.hooks.doAction.apply(this, arguments);
+			
+			return this;
+			
+		},
+		
+		
+		/*
+		*  add_filter
+		*
+		*  This function uses wp.hooks to mimics WP add_filter
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	
+		*  @return
+		*/
+		
+		add_filter : function() {
+			
+			// prefix action
+			arguments[0] = 'acf.' + arguments[0];
+			
+			wp.hooks.addFilter.apply(this, arguments);
+			
+			return this;
+			
+		},
+		
+		
+		/*
+		*  remove_filter
+		*
+		*  This function uses wp.hooks to mimics WP remove_filter
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	
+		*  @return
+		*/
+		
+		remove_filter : function() {
+			
+			// prefix action
+			arguments[0] = 'acf.' + arguments[0];
+			
+			wp.hooks.removeFilter.apply(this, arguments);
+			
+			return this;
+			
+		},
+		
+		
+		/*
+		*  apply_filters
+		*
+		*  This function uses wp.hooks to mimics WP apply_filters
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	
+		*  @return
+		*/
+		
+		apply_filters : function() {
+			
+			// prefix action
+			arguments[0] = 'acf.' + arguments[0];
+			
+			return wp.hooks.applyFilters.apply(this, arguments);
+			
+		},
+		
+		
+		/*
+		*  get_fields
+		*
+		*  This function will return a jQuery selection of fields
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	args (object)
+		*  @param	$el (jQuery) element to look within
+		*  @param	all (boolean) return all fields or allow filtering (for repeater)
+		*  @return	$fields (jQuery)
+		*/
 		
 		get_fields : function( args, $el, all ){
 			
@@ -428,6 +623,21 @@ var acf = {
 							
 		},
 		
+		
+		/*
+		*  get_field
+		*
+		*  This function will return a jQuery selection based on a field key
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	field_key (string)
+		*  @param	$el (jQuery) element to look within
+		*  @return	$field (jQuery)
+		*/
+		
 		get_field : function( field_key, $el ){
 			
 			// defaults
@@ -439,9 +649,10 @@ var acf = {
 			
 			
 			// validate
-			if( !$fields.exists() )
-			{
+			if( !$fields.exists() ) {
+			
 				return false;
+				
 			}
 			
 			
@@ -450,17 +661,56 @@ var acf = {
 			
 		},
 		
-		get_the_field : function( $el ){
+		
+		/*
+		*  get_closest_field
+		*
+		*  This function will return the closest parent field
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	$el (jQuery) element to start from
+		*  @param	args (object)
+		*  @return	$field (jQuery)
+		*/
+		
+		get_closest_field : function( $el, args ){
 			
-			return $el.parent().closest('.acf-field');
+			// defaults
+			args = args || {};
+			
+			
+			// vars
+			var selector = '.acf-field';
+			
+			
+			// add selector
+			for( k in args ) {
+				
+				selector += '[data-' + k + '="' + args[k] + '"]';
+				
+			}
+			
+			
+			return $el.closest( selector );
 			
 		},
 		
-		get_closest_field : function( $el ){
-			
-			return $el.closest('.acf-field');
-			
-		},
+		
+		/*
+		*  get_field_wrap
+		*
+		*  This function will return the closest parent field
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	$el (jQuery) element to start from
+		*  @return	$field (jQuery)
+		*/
 		
 		get_field_wrap : function( $el ){
 			
@@ -468,22 +718,19 @@ var acf = {
 			
 		},
 		
+		
 		/*
-get_field_data : function( $el, name ){
-			
-			// defaults
-			name = name || false;
-			
-			
-			// vars
-			$field = this.get_field_wrap( $el );
-			
-			
-			// return
-			return this.get_data( $field, name );
-			
-		},
-*/
+		*  get_field_key
+		*
+		*  This function will return the field's key
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	$field (jQuery)
+		*  @return	(string)
+		*/
 		
 		get_field_key : function( $field ){
 		
@@ -491,12 +738,40 @@ get_field_data : function( $el, name ){
 			
 		},
 		
+		
+		/*
+		*  get_field_type
+		*
+		*  This function will return the field's type
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	$field (jQuery)
+		*  @return	(string)
+		*/
+		
 		get_field_type : function( $field ){
 		
 			return this.get_data( $field, 'type' );
 			
 		},
 		
+		
+		/*
+		*  get_data
+		*
+		*  This function will return attribute data for a given elemnt
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	$el (jQuery)
+		*  @param	name (mixed)
+		*  @return	(mixed)
+		*/
 		
 		get_data : function( $el, name ){
 			
@@ -561,25 +836,46 @@ get_field_data : function( $el, name ){
 				
 		},
 		
+		
+		/*
+		*  is_field
+		*
+		*  This function will return true if the jQuery selection is an acf-field
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	$el (jQuery)
+		*  @param	args (object)
+		*  @return	$post_id (int)
+		*/
+		
 		is_field : function( $el, args ){
 			
-			// var
-			var r = true;
+			// defaults
+			args = args || {};
 			
 			
-			// check $el class
-			if( ! $el.hasClass('acf-field') )
-			{
-				r = false;
+			// bail early if class does not exist
+			if( !$el.hasClass('acf-field') ) {
+			
+				return false;
+				
 			}
+			
+			
+			// vars
+			var r = true;
 			
 			
 			// check args (data attributes)
 			$.each( args, function( k, v ) {
 				
-				if( $el.attr('data-' + k) != v )
-				{
+				if( $el.attr('data-' + k) != v ) {
+				
 					r = false;
+					
 				}
 				
 			});
@@ -589,6 +885,21 @@ get_field_data : function( $el, name ){
 			return r;
 			
 		},
+		
+		
+		/*
+		*  is_sub_field
+		*
+		*  This function will return true if the jQuery selection is a sub field
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	$field (jQuery)
+		*  @param	args (object)
+		*  @return	(boolean)
+		*/
 		
 		is_sub_field : function( $field, args ) {
 			
@@ -623,6 +934,21 @@ get_field_data : function( $el, name ){
 			return r;
 			
 		},
+		
+		
+		/*
+		*  get_uniqid
+		*
+		*  This function will return a unique string ID
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	prefix (string)
+		*  @param	more_entropy (boolean)
+		*  @return	(string)
+		*/
 		
 		get_uniqid : function( prefix, more_entropy ){
 		
@@ -673,6 +999,21 @@ get_field_data : function( $el, name ){
 			
 		},
 		
+		
+		/*
+		*  serialize_form
+		*
+		*  This function will create an object of data containing all form inputs within an element
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	$el (jQuery selection)
+		*  @param	prefix (string)
+		*  @return	$post_id (int)
+		*/
+		
 		serialize_form : function( $el, prefix ){
 			
 			// defaults
@@ -691,7 +1032,7 @@ get_field_data : function( $el, name ){
 			$selector = $el.find('select, textarea, input');
 			
 			
-			// filter our hidden field groups
+			// filter out hidden field groups
 			$selector = $selector.filter(function(){
 				
 				return $(this).closest('.postbox.acf-hidden').exists() ? false : true;
@@ -743,6 +1084,21 @@ get_field_data : function( $el, name ){
 			return data;
 		},
 		
+		
+		/*
+		*  remove_tr
+		*
+		*  This function will remove a tr element with animation
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	$tr (jQuery selection)
+		*  @param	callback (function) runs on complete
+		*  @return	n/a
+		*/
+		
 		remove_tr : function( $tr, callback ){
 			
 			// vars
@@ -769,9 +1125,10 @@ get_field_data : function( $el, name ){
 					
 					$tr.remove();
 					
-					if( typeof(callback) == 'function' )
-					{
+					if( typeof(callback) == 'function' ) {
+					
 						callback();
+					
 					}
 					
 					
@@ -781,6 +1138,22 @@ get_field_data : function( $el, name ){
 			}, 250);
 			
 		},
+		
+		
+		/*
+		*  remove_el
+		*
+		*  This function will remove an element with animation
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	$el (jQuery selection)
+		*  @param	callback (function) runs on complete
+		*  @param	end_height (int)
+		*  @return	n/a
+		*/
 		
 		remove_el : function( $el, callback, end_height ){
 			
@@ -810,15 +1183,33 @@ get_field_data : function( $el, name ){
 				
 				$(this).remove();
 				
-				if( typeof(callback) == 'function' )
-				{
+				if( typeof(callback) == 'function' ) {
+				
 					callback();
+				
 				}
 				
 			});
 			
 			
 		},
+		
+		
+		/*
+		*  isset
+		*
+		*  This function will return true if an object key exists
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	(object)
+		*  @param	key1 (string)
+		*  @param	key2 (string)
+		*  @param	...
+		*  @return	(boolean)
+		*/
 		
 		isset : function(){
 			
@@ -847,6 +1238,20 @@ get_field_data : function( $el, name ){
 			
 		},
 		
+		
+		/*
+		*  open_popup
+		*
+		*  This function will create and open a popup modal
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	args (object)
+		*  @return	n/a
+		*/
+		
 		open_popup : function( args ){
 			
 			// vars
@@ -854,9 +1259,10 @@ get_field_data : function( $el, name ){
 			
 			
 			// already exists?
-			if( $popup.exists() )
-			{
+			if( $popup.exists() ) {
+			
 				return update_popup(args);
+				
 			}
 			
 			
@@ -891,6 +1297,20 @@ get_field_data : function( $el, name ){
 			
 		},
 		
+		
+		/*
+		*  update_popup
+		*
+		*  This function will update the content within a popup modal
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	args (object)
+		*  @return	n/a
+		*/
+		
 		update_popup : function( args ){
 			
 			// vars
@@ -914,43 +1334,62 @@ get_field_data : function( $el, name ){
 			}, args);
 			
 			
-			if( args.width )
-			{
+			if( args.width ) {
+			
 				$popup.find('.acf-popup-box').css({
 					'width'			: args.width,
 					'margin-left'	: 0 - (args.width / 2),
 				});
+				
 			}
 			
-			if( args.height )
-			{
+			if( args.height ) {
+			
 				$popup.find('.acf-popup-box').css({
 					'height'		: args.height,
 					'margin-top'	: 0 - (args.height / 2),
 				});	
+				
 			}
 			
-			if( args.title )
-			{
+			if( args.title ) {
+			
 				$popup.find('.title h3').html( args.title );
+			
 			}
 			
-			if( args.content )
-			{
+			if( args.content ) {
+			
 				$popup.find('.inner').html( args.content );
+				
 			}
 			
-			if( args.loading )
-			{
+			if( args.loading ) {
+			
 				$popup.find('.loading').show();
-			}
-			else
-			{
+				
+			} else {
+			
 				$popup.find('.loading').hide();
+				
 			}
 			
 			return $popup;
 		},
+		
+		
+		/*
+		*  close_popup
+		*
+		*  This function will close and remove a popup modal
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	n/a
+		*  @return	n/a
+		*/
 		
 		close_popup : function(){
 			
@@ -966,6 +1405,20 @@ get_field_data : function( $el, name ){
 			
 			
 		},
+		
+		
+		/*
+		*  update_user_setting
+		*
+		*  This function will send an AJAX request to update a user setting
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	$post_id (int)
+		*  @return	$post_id (int)
+		*/
 		
 		update_user_setting : function( name, value ) {
 			
@@ -983,6 +1436,20 @@ get_field_data : function( $el, name ){
 			
 		},
 		
+		
+		/*
+		*  prepare_for_ajax
+		*
+		*  This function will prepare data for an AJAX request
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	args (object)
+		*  @return	args
+		*/
+		
 		prepare_for_ajax : function( args ) {
 			
 			// nonce
@@ -997,6 +1464,20 @@ get_field_data : function( $el, name ){
 			return args;
 			
 		},
+		
+		
+		/*
+		*  is_ajax_success
+		*
+		*  This function will return true for a successful WP AJAX response
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	json (object)
+		*  @return	(boolean)
+		*/
 		
 		is_ajax_success : function( json ) {
 			
@@ -1042,137 +1523,152 @@ get_field_data : function( $el, name ){
 			
 			this.update_cookie(name,"",-1);
 			
-		}
-				
-	});
-	
-	
-	/*
-	*  Hooks
-	*
-	*  These functions act as wrapper functions for the included event-manager JS library
-	*  Wrapper functions will ensure that future changes to event-manager do not disrupt
-	*  any custom actions / filter code written by users
-	*
-	*  @type	functions
-	*  @date	30/11/2013
-	*  @since	5.0.0
-	*
-	*  @param	n/a
-	*  @return	n/a
-	*/
-	
-	$.extend(acf, {
-		
-		add_action : function() {
-			
-			// allow multiple action parameters such as 'ready append'
-			var actions = arguments[0].split(' ');
-			
-			for( k in actions )
-			{
-				// prefix action
-				arguments[0] = 'acf.' + actions[ k ];
-				
-				wp.hooks.addAction.apply(this, arguments);
-			}
-			
-			return this;
 		},
 		
-		remove_action : function() {
-			
-			// prefix action
-			arguments[0] = 'acf.' + arguments[0];
-			
-			wp.hooks.removeAction.apply(this, arguments);
-			
-			return this;
-		},
 		
-		do_action : function() {
-			
-			// prefix action
-			arguments[0] = 'acf.' + arguments[0];
-			
-			wp.hooks.doAction.apply(this, arguments);
-			
-			return this;
-		},
+		/*
+		*  is_in_view
+		*
+		*  This function will return true if a jQuery element is visible in browser
+		*
+		*  @type	function
+		*  @date	8/09/2014
+		*  @since	5.0.0
+		*
+		*  @param	$el (jQuery)
+		*  @return	(boolean)
+		*/
 		
-		add_filter : function() {
+		is_in_view: function( $el ) {
 			
-			// prefix action
-			arguments[0] = 'acf.' + arguments[0];
-			
-			wp.hooks.addFilter.apply(this, arguments);
-			
-			return this;
-		},
+			var docViewTop = $(window).scrollTop();
+		    var docViewBottom = docViewTop + $(window).height();
 		
-		remove_filter : function() {
-			
-			// prefix action
-			arguments[0] = 'acf.' + arguments[0];
-			
-			wp.hooks.removeFilter.apply(this, arguments);
-			
-			return this;
-		},
+		    var elemTop = $el.offset().top;
+		    var elemBottom = elemTop + $el.height();
 		
-		apply_filters : function() {
-			
-			// prefix action
-			arguments[0] = 'acf.' + arguments[0];
-			
-			return wp.hooks.applyFilters.apply(this, arguments);
+		    return ((elemBottom <= docViewBottom) && (elemTop >= docViewTop));
+					
 		}
 		
-	});
-    
-	
-	/*
-	*  Exists
-	*
-	*  @description: returns true / false		
-	*  @created: 1/03/2011
-	*/
-	
-	$.fn.exists = function()
-	{
-		return $(this).length>0;
 	};
 	
 	
 	/*
-	*  outerHTML
+	*  acf.model
 	*
-	*  This function will return a string containing the HTML of the selected element
+	*  This model acts as a scafold for action.event driven modules
 	*
-	*  @type	function
-	*  @date	19/11/2013
+	*  @type	object
+	*  @date	8/09/2014
 	*  @since	5.0.0
 	*
-	*  @param	$.fn
-	*  @return	(string)
+	*  @param	(object)
+	*  @return	(object)
 	*/
 	
-	$.fn.outerHTML = function() {
-	    
-	    return $(this).get(0).outerHTML;
-	    
-	}
+	acf.model = {
+		
+		// vars
+		actions:	{},
+		filters:	{},
+		events:		{},
+		
+		
+		extend: function( args ){
+			
+			// extend
+			var model = $.extend( {}, this, args );
+			
+			
+			// setup actions
+			$.each(model.actions, function( name, callback ){
+				
+				// split
+				var data = name.split(' ');
+				
+				
+				// add missing priority
+				var name = data[0] || '',
+					priority = data[1] || 10;
+				
+				
+				// add action
+				acf.add_action(name, model[ callback ], priority, model);
+			
+			});
+			
+			
+			// setup filters
+			$.each(model.filters, function( name, callback ){
+				
+				// split
+				var data = name.split(' ');
+				
+				
+				// add missing priority
+				var name = data[0] || '',
+					priority = data[1] || 10;
+				
+				
+				// add action
+				acf.add_filter(name, model[ callback ], priority, model);
+			
+			});
+			
+			
+			// setup events
+			$.each(model.events, function( k, callback ){
+				
+				// vars
+				var event = k.substr(0,k.indexOf(' ')),
+					selector = k.substr(k.indexOf(' ')+1);
+				
+				
+				// add event
+				$(document).on(event, selector, function( e ){
+					
+					// appen $el to event object
+					e.$el = $(this);
+					
+					
+					// callback
+					model[ callback ].apply(model, [e]);
+					
+				});
+				
+			});
+			
+			
+			// return
+			return model;
+			
+		}
+		
+	};
+	
+	
 	
 	
 	/*
-	*  3.5 Media
+	*  media
 	*
-	*  @description: 
-	*  @since: 3.5.7
-	*  @created: 16/01/13
+	*  This model contains all functionallity to select and edit attachments
+	*
+	*  @type	function
+	*  @date	8/09/2014
+	*  @since	5.0.0
+	*
+	*  @param	$post_id (int)
+	*  @return	$post_id (int)
 	*/
 	
-	acf.media = {
+	acf.media = acf.model.extend({
+		
+		actions: {
+			'ready':	'onReady',
+			'load':		'onLoad'
+		},
 		
 		popup : function( args ) {
 			
@@ -1245,12 +1741,17 @@ get_field_data : function( $el, name ){
 					// If the user isn't allowed to edit fields,
 					// can they still edit it locally?
 					allowLocalEdits: true,
-				}),
-				
-				// edit image functionality
-				new wp.media.controller.EditImage()
+				})
 				
 			];
+			
+			
+			// edit image functionality (added in WP 3.9)
+			if( typeof wp.media.controller.EditImage !== 'undefined' ) {
+				
+				options.states.push( new wp.media.controller.EditImage() );
+				
+			}
 			
 			
 			// create frame
@@ -1302,7 +1803,7 @@ frame.on('all', function( e ) {
 				
 				
 				// uploaded to post
-				if( args.library == 'uploadedTo' ) {
+				if( args.library == 'uploadedTo' && $.isNumeric(acf.get('post_id')) ) {
 					
 					// remove 'uploaded' option
 					filters.$el.find('option[value="uploaded"]').remove();
@@ -1495,21 +1996,37 @@ frame.on('all', function( e ) {
 			
 		},
 		
-		init : function(){
+		onReady: function(){
+			
+			// vars
+			var major = acf.get('wp_version');
+			
+			
+			// add class
+			if( major ) {
+				
+				$('body').addClass('acf-wp-' + major.substr(0,1));
+				
+			}
+			
+		},
+		
+		onLoad: function(){
 			
 			// bail early if wp.media does not exist (field group edit page)
-			if( typeof wp == 'undefined' )
-			{
+			if( typeof wp == 'undefined' ) {
+			
 				return false;
+				
 			}
 			
 			
 			// validate prototype
-			if( ! acf.isset(wp, 'media', 'view', 'AttachmentCompat', 'prototype') )
-			{
-				return false;	
-			}
+			if( ! acf.isset(wp, 'media', 'view', 'AttachmentCompat', 'prototype') ) {
 			
+				return false;
+				
+			}
 			
 			
 			// vars
@@ -1529,9 +2046,10 @@ frame.on('all', function( e ) {
 				
 				
 				// validate
-				if( _this.ignore_render )
-				{
+				if( _this.ignore_render ) {
+				
 					return this;	
+					
 				}
 				
 				
@@ -1547,24 +2065,26 @@ frame.on('all', function( e ) {
 					
 					
 					// is this an edit only modal?
-					if( $media_model.hasClass('acf-media-modal') )
-					{
+					if( $media_model.hasClass('acf-media-modal') ) {
+					
 						return;	
+						
 					}
 					
 					
 					// does button already exist?
-					if( $media_model.find('.media-frame-router .acf-expand-details').exists() )
-					{
+					if( $media_model.find('.media-frame-router .acf-expand-details').exists() ) {
+					
 						return;	
+						
 					}
 					
 					
 					// create button
 					var button = $([
 						'<a href="#" class="acf-expand-details">',
-							'<span class="is-closed"><span class="acf-icon small"><i class="acf-sprite-left"></i></span>' + acf.l10n.core.expand_details +  '</span>',
-							'<span class="is-open"><span class="acf-icon small"><i class="acf-sprite-right"></i></span>' + acf.l10n.core.collapse_details +  '</span>',
+							'<span class="is-closed"><span class="acf-icon small"><i class="acf-sprite-left"></i></span>' + acf._e('expand_details') +  '</span>',
+							'<span class="is-open"><span class="acf-icon small"><i class="acf-sprite-right"></i></span>' + acf._e('collapse_details') +  '</span>',
 						'</a>'
 					].join('')); 
 					
@@ -1574,13 +2094,14 @@ frame.on('all', function( e ) {
 						
 						e.preventDefault();
 						
-						if( $media_model.hasClass('acf-expanded') )
-						{
+						if( $media_model.hasClass('acf-expanded') ) {
+						
 							$media_model.removeClass('acf-expanded');
-						}
-						else
-						{
+							
+						} else {
+							
 							$media_model.addClass('acf-expanded');
+							
 						}
 						
 					});
@@ -1624,42 +2145,22 @@ frame.on('all', function( e ) {
 			// override save
 			_prototype.save = function( event ) {
 			
-				var data = {},
-					names = {};
-				
-				if ( event )
+				if( event ) {
+					
 					event.preventDefault();
 					
-					
-				_.each( this.$el.serializeArray(), function( pair ) {
+				}
 				
-					// initiate name
-					if( pair.name.slice(-2) === '[]' )
-					{
-						// remove []
-						pair.name = pair.name.replace('[]', '');
-						
-						
-						// initiate counter
-						if( typeof names[ pair.name ] === 'undefined'){
-							
-							names[ pair.name ] = -1;
-							//console.log( names[ pair.name ] );
-							
-						}
-						
-						
-						names[ pair.name ]++
-						
-						pair.name += '[' + names[ pair.name ] +']';
-						
-						
-					}
- 
-					data[ pair.name ] = pair.value;
-				});
- 
+				
+				// serialize form
+				var data = acf.serialize_form(this.$el);
+				
+				
+				// ignore render
 				this.ignore_render = true;
+				
+				
+				// save
 				this.model.saveCompat( data );
 				
 			};
@@ -1669,34 +2170,21 @@ frame.on('all', function( e ) {
 			setTimeout(function(){
 			
 				// Hack for CPT without a content editor
-				try
-				{
+				try {
+				
 					// post_id may be string (user_1) and therefore, the uploaded image cannot be attached to the post
-					if( $.isNumeric(acf.o.post_id) )
-					{
+					if( $.isNumeric(acf.o.post_id) ) {
+					
 						wp.media.view.settings.post.id = acf.o.post_id;
+						
 					}
 					
-				} 
-				catch(e)
-				{
-					// one of the objects was 'undefined'...
-				}
-				
-				
-				// setup fields
-				//$(document).trigger('acf/setup_fields', [ $(document) ]);
+				} catch(e) {}
 				
 			}, 10);
 			
 			
 		}
-	};
-	
-	acf.add_action('load', function(){
-		
-		acf.media.init();
-		
 	});
 	
 	
@@ -1714,41 +2202,21 @@ frame.on('all', function( e ) {
 	*  @return	$post_id (int)
 	*/
 		
-	acf.conditional_logic = {
+	acf.conditional_logic = acf.model.extend({
 		
-		items : {},
-		triggers : {},
-		
-		init : function(){
-			
-			// reference
-			var _this = this;
-			
-			
-			// events
-			$(document).on('change', '.acf-field input, .acf-field textarea, .acf-field select', function(){
-				
-				_this.change( $(this) );
-				
-			});
-			
-			
-			// actions
-			acf.add_action('append', function( $el ){
-				
-				_this.render( $el );
-				
-			});
-			
-			
-			// debug
-			//console.log( 'conditional_logic.init(%o)', this );
-			
-			
-			// render
-			_this.render();
-			
+		actions: {
+			'ready 20': 	'render',
+			'append 20': 	'render'
 		},
+		
+		events: {
+			'change .acf-field input': 		'change',
+			'change .acf-field textarea': 	'change',
+			'change .acf-field select': 	'change'
+		},
+		
+		items: {},
+		triggers: {},
 		
 		add : function( key, groups ){
 			
@@ -1798,14 +2266,15 @@ frame.on('all', function( e ) {
 			
 		},
 		
-		change : function( $input ){
+		change : function( e ){
 			
 			// debug
 			//console.log( 'conditional_logic.change(%o)', $input );
 			
 			
 			// vars
-			var $field	= acf.get_field_wrap( $input ),
+			var $input	= e.$el,
+				$field	= acf.get_field_wrap( $input ),
 				$parent = $field.parent(),
 				key		= acf.get_field_key( $field );
 			
@@ -1838,7 +2307,7 @@ frame.on('all', function( e ) {
 		render : function( $el ){
 			
 			// debug
-			//console.log('render(%o)', $el);
+			//console.log('conditional_logic.render(%o)', $el);
 			
 			
 			// defaults
@@ -1846,7 +2315,7 @@ frame.on('all', function( e ) {
 			
 			
 			// get targets
-			var $targets = acf.get_fields( {}, $el, true );
+			var $targets = acf.get_fields( {}, $el );
 			
 			
 			// render fields
@@ -1949,7 +2418,7 @@ frame.on('all', function( e ) {
 		show_field : function( $field ){
 			
 			// vars
-			var key = acf.get_field_key( $field );
+			//var key = acf.get_field_key( $field );
 							
 			
 			// add class
@@ -1963,7 +2432,7 @@ frame.on('all', function( e ) {
 			
 			// action for 3rd party customization
 			acf.do_action('conditional_logic_show_field', $field );
-			acf.do_action('show_field', $field );
+			acf.do_action('show_field', $field, 'conditional_logic' );
 			
 		},
 		
@@ -1974,7 +2443,7 @@ frame.on('all', function( e ) {
 			
 			
 			// vars
-			var key = acf.get_field_key( $field );
+			//var key = acf.get_field_key( $field );
 			
 			
 			// add class
@@ -1987,7 +2456,7 @@ frame.on('all', function( e ) {
 			
 			// action for 3rd party customization
 			acf.do_action('conditional_logic_hide_field', $field );
-			acf.do_action('hide_field', $field );
+			acf.do_action('hide_field', $field, 'conditional_logic' );
 			
 		},
 		
@@ -2126,13 +2595,7 @@ frame.on('all', function( e ) {
 			
 		}
 		
-	}; 
-	
-	acf.add_action('ready', function(){
-		
-		acf.conditional_logic.init();
-		
-	}, 100);
+	});
 	
 	
 	
@@ -2214,13 +2677,76 @@ frame.on('all', function( e ) {
 	$(document).on('change', '.acf-field input, .acf-field textarea, .acf-field select', function(){
 		
 		// preview hack
-		if( $('#acf-form-data input[name="_acfchanged"]').exists() )
-		{
+		if( $('#acf-form-data input[name="_acfchanged"]').exists() ) {
+		
 			$('#acf-form-data input[name="_acfchanged"]').val(1);
+			
 		}
+		
+		
+		// update setting
+		acf.update('changed', true);
 		
 	});
 	
+	
+	/*
+	*  unload
+	*
+	*  description
+	*
+	*  @type	function
+	*  @date	1/09/2014
+	*  @since	5.0.0
+	*
+	*  @param	$post_id (int)
+	*  @return	$post_id (int)
+	*/
+	
+	var unload = function(){
+			
+		if( acf.get('changed') ) {
+			
+			return acf._e('unload');
+			
+		}
+		
+	};	
+	
+	
+	// add unload if validation fails
+	acf.add_filter('validation_complete', function( json, $form ){
+		
+		if( json.errors ) {
+			
+			$(window).on('beforeunload', unload);
+			
+		}
+		
+		
+		// return
+		return json;
+		
+	});
+	
+	
+	// remove unload when submitting form
+	$(document).on('submit', 'form', function( e ){
+		
+		$(window).off('beforeunload', unload);
+						
+	});
+	
+	acf.add_action('submit', function( $form ){
+		
+		$(window).off('beforeunload', unload);
+						
+	});
+	
+	
+	// add unload event
+	$(window).on('beforeunload', unload);
+			
 	
 	/*
 	*  Sortable
@@ -2312,6 +2838,213 @@ frame.on('all', function( e ) {
 	});
 	
 	
+	/*
+	*  field model
+	*
+	*  description
+	*
+	*  @type	function
+	*  @date	14/08/2014
+	*  @since	5.0.0
+	*
+	*  @param	$post_id (int)
+	*  @return	$post_id (int)
+	*/
+	
+	acf.add_action('ready', function( $el ){
+				
+		acf.get_fields({}, $el).each(function(){
+			
+			acf.do_action('ready_field', $(this));
+			acf.do_action('ready_field/type=' + acf.get_field_type($(this)), $(this));
+			
+		});
+		
+	});
+	
+	acf.add_action('append', function( $el ){
+				
+		acf.get_fields({}, $el).each(function(){
+			
+			acf.do_action('append_field', $(this));
+			acf.do_action('append_field/type=' + acf.get_field_type($(this)), $(this));
+			
+		});
+		
+	});
+	
+	acf.add_action('load', function( $el ){
+				
+		acf.get_fields({}, $el).each(function(){
+			
+			acf.do_action('load_field', $(this));
+			acf.do_action('load_field/type=' + acf.get_field_type($(this)), $(this));
+			
+		});
+		
+	});
+	
+	
+	acf.add_action('remove', function( $el ){
+				
+		acf.get_fields({}, $el).each(function(){
+			
+			acf.do_action('remove_field', $(this));
+			acf.do_action('remove_field/type=' + acf.get_field_type($(this)), $(this));
+			
+		});
+		
+	});
+	
+	acf.add_action('sortstart', function( $item, $placeholder ){
+				
+		acf.get_fields({}, $item).each(function(){
+			
+			acf.do_action('sortstart_field', $(this));
+			acf.do_action('sortstart_field/type=' + acf.get_field_type($(this)), $(this));
+			
+		});
+		
+	});
+	
+	acf.add_action('sortstop', function( $item, $placeholder ){
+				
+		acf.get_fields({}, $item).each(function(){
+			
+			acf.do_action('sortstop_field', $(this));
+			acf.do_action('sortstop_field/type=' + acf.get_field_type($(this)), $(this));
+			
+		});
+		
+	});
+	
+	acf.add_action('hide_field', function( $el, context ){
+				
+		acf.do_action('hide_field/type=' + acf.get_field_type($el), $el, context);
+		
+	});
+	
+	acf.add_action('show_field', function( $el, context ){
+				
+		acf.do_action('show_field/type=' + acf.get_field_type($el), $el, context);
+		
+	});
+	
+	
+	acf.fields = {};
+	acf.field = {
+		
+		// vars
+		type:		'',
+		settings:	{},
+		actions:	{},
+		events:		{},
+		$field:		null,
+		
+		extend: function( args ){
+			
+			// extend
+			var model = $.extend( {}, this, args );
+			
+			
+			// setup actions
+			$.each(model.actions, function( action, callback ){
+				
+				// vars
+				var action = action + '_field/type=' + model.type;
+				
+				acf.add_action(action, function(){
+					
+					[].unshift.apply(arguments, [callback]);
+					
+					model.doAction.apply(model, arguments);
+					
+				});
+			
+			});
+			
+			
+			// setup events
+			$.each(model.events, function( k, callback ){
+				
+				var event = k.substr(0,k.indexOf(' ')),
+					selector = k.substr(k.indexOf(' ')+1);
+				
+				$(document).on(event, '.acf-field[data-type="' + model.type + '"] ' + selector, function( e ){
+					
+					e.$el = $(this);
+					
+					model.doEvent.apply(model, [ callback, e ]);
+					
+				});
+				
+			});
+			
+			
+			// return
+			return model;
+			
+		},
+		
+		doFocus: function( $field ){
+			
+			// focus on $field
+			this.$field = $field;
+			
+			
+			// merge in field's data
+			$.extend(this.settings, acf.get_data($field));
+			
+			
+			// callback
+			if( typeof this.focus === 'function' ) {
+				
+				this.focus();
+				
+			}
+			
+			
+			// return for chaining
+			return this;
+			
+		},
+		
+		doAction: function(){
+			
+			// debug
+			//console.log('doAction(%o)', arguments);
+			
+			
+			// remove callback from arguments
+			var callback = [].shift.apply(arguments);
+			
+			
+			// focus
+			this.doFocus( arguments[0] );
+			
+			
+			// callback
+			this[ callback ].apply(this, arguments);
+			
+		},
+		
+		doEvent: function( callback, e ){
+			
+			// debug
+			//console.log('doEvent(%o, %o, %o)', callback, $el, e);
+			
+			
+			// focus
+			this.doFocus( acf.get_closest_field( e.$el, {type : this.type} ) );
+			
+			
+			// callback
+			this[ callback ].apply(this, [e]);
+			
+		},
+		
+	};
+	
 })(jQuery);
 
 /* **********************************************
@@ -2320,17 +3053,21 @@ frame.on('all', function( e ) {
 
 (function($){
 	
-	acf.ajax = {
+	acf.ajax = acf.model.extend({
+		
+		actions: {
+			'ready': 'onReady'
+		},
 		
 		o : {
-			action 			:	'acf/post/get_field_groups',
-			post_id			:	0,
-			page_template	:	0,
-			page_parent		:	0,
-			page_type		:	0,
-			post_format		:	0,
-			post_taxonomy	:	0,
-			lang			:	0,
+			action 			: 'acf/post/get_field_groups',
+			post_id			: 0,
+			page_template	: 0,
+			page_parent		: 0,
+			page_type		: 0,
+			post_format		: 0,
+			post_taxonomy	: 0,
+			lang			: 0,
 		},
 		
 		update : function( k, v ){
@@ -2346,22 +3083,23 @@ frame.on('all', function( e ) {
 			
 		},
 		
-		init : function(){
+		onReady : function(){
 			
 			// bail early if ajax is disabled
-			if( ! acf.get('ajax') )
-			{
-				return false;	
+			if( ! acf.get('ajax') ) {
+			
+				return false;
+				
 			}
 			
 			
 			// vars
-			this.update('post_id', acf.o.post_id);
+			this.update('post_id', acf.get('post_id'));
 			
 			
 			// MPML
-			if( $('#icl-als-first').length > 0 )
-			{
+			if( $('#icl-als-first').length > 0 ) {
+			
 				var href = $('#icl-als-first').children('a').attr('href'),
 					regex = new RegExp( "lang=([^&#]*)" ),
 					results = regex.exec( href );
@@ -2374,6 +3112,7 @@ frame.on('all', function( e ) {
 			
 			// add triggers
 			this.add_events();
+			
 		},
 		
 		fetch : function(){
@@ -2623,26 +3362,6 @@ frame.on('all', function( e ) {
 			
 		}
 		
-	};
-	
-	
-	/*
-	*  Document Ready
-	*
-	*  Initialize the object
-	*
-	*  @type	function
-	*  @date	1/03/2011
-	*
-	*  @param	N/A
-	*  @return	N/A
-	*/
-	
-	$(document).ready(function(){
-		
-		// initialize
-		acf.ajax.init();
-		
 	});
 
 
@@ -2655,18 +3374,30 @@ frame.on('all', function( e ) {
 
 (function($){
 	
-	acf.fields.color_picker = {
+	acf.fields.color_picker = acf.field.extend({
 		
-		timeout : null,
+		type: 'color_picker',
+		timeout: null,
 		
-		init : function( $input ){
+		actions: {
+			'ready':	'initialize',
+			'append':	'initialize'
+		},
+		
+		focus: function(){
+			
+			this.$input = this.$field.find('input[type="text"]');
+			
+		},
+		
+		initialize: function(){
 			
 			// reference
 			var self = this;
 			
 			
 			// vars
-			var $hidden = $input.clone();
+			var $hidden = this.$input.clone();
 			
 			
 			// modify hidden
@@ -2679,63 +3410,35 @@ frame.on('all', function( e ) {
  			
  			
  			// append hidden
- 			$input.before( $hidden );
+ 			this.$input.before( $hidden );
  			
  			
  			// iris
-			$input.wpColorPicker({
+			this.$input.wpColorPicker({
 				
 				change: function( event, ui ){
 			
-					self.change( $input, $hidden );
+					if( self.timeout ) {
+				
+						clearTimeout( self.timeout );
+						
+					}
+					
+					
+					self.timeout = setTimeout(function(){
+						
+						$hidden.trigger('change');
+						
+					}, 1000);
 					
 				}
 				
 			});
 			
-		},
-		
-		change : function( $input, $hidden ){
-			
-			if( this.timeout ) {
-				
-				clearTimeout( this.timeout );
-				
-			}
-			
-			
-			this.timeout = setTimeout(function(){
-				
-				$hidden.trigger('change');
-				
-			}, 1000);
-			
 		}
-	};
-	
-	
-	/*
-	*  acf/setup_fields
-	*
-	*  run init function on all elements for this field
-	*
-	*  @type	event
-	*  @date	20/07/13
-	*
-	*  @param	{object}	e		event object
-	*  @param	{object}	el		DOM object which may contain new ACF elements
-	*  @return	N/A
-	*/
-	
-	acf.add_action('ready append', function( $el ){
 		
-		acf.get_fields({ type : 'color_picker'}, $el).each(function(){
-			
-			acf.fields.color_picker.init( $(this).find('input[type="text"]') );
-			
-		});
-		
-	});	
+	});
+	
 
 })(jQuery);
 
@@ -2745,119 +3448,83 @@ frame.on('all', function( e ) {
 
 (function($){
 	
-	/*
-	*  Date Picker
-	*
-	*  static model for this field
-	*
-	*  @type	event
-	*  @date	1/06/13
-	*
-	*/
-	
-	acf.fields.date_picker = {
+	acf.fields.date_picker = acf.field.extend({
 		
-		init : function( $el ){
+		type: 'date_picker',
+		$el: null,
+		$input: null,
+		$hidden: null,
+		
+		actions: {
+			'ready':	'initialize',
+			'append':	'initialize'
+		},
+		
+		events: {
+			'blur input[type="text"]': 'blur',
+		},
+		
+		focus: function(){
 			
-			// vars
-			var $input = $el.find('input[type="text"]'),
-				$hidden = $el.find('input[type="hidden"]');
+			this.$el = this.$field.find('.acf-date_picker');
+			this.$input = this.$el.find('input[type="text"]');
+			this.$hidden = this.$el.find('input[type="hidden"]');
 			
-			
-			// get options
-			var o = acf.get_data( $el );
-			
+			this.settings = acf.get_data( this.$el );
+		},
+		
+		initialize: function(){
 			
 			// get and set value from alt field
-			$input.val( $hidden.val() );
+			this.$input.val( this.$hidden.val() );
 			
 			
 			// create options
 			var args = $.extend( {}, acf.l10n.date_picker, { 
 				dateFormat		:	'yymmdd',
-				altField		:	$hidden,
+				altField		:	this.$hidden,
 				altFormat		:	'yymmdd',
 				changeYear		:	true,
 				yearRange		:	"-100:+100",
 				changeMonth		:	true,
 				showButtonPanel	:	true,
-				firstDay		:	o.first_day
+				firstDay		:	this.settings.first_day
 			});
 			
 			
 			// filter for 3rd party customization
-			args = acf.apply_filters('date_picker_args', args, $el);
+			args = acf.apply_filters('date_picker_args', args, this.$el);
 			
 			
 			// add date picker
-			$input.addClass('active').datepicker( args );
+			this.$input.addClass('active').datepicker( args );
 			
 			
 			// now change the format back to how it should be.
-			$input.datepicker( "option", "dateFormat", o.display_format );
+			this.$input.datepicker( "option", "dateFormat", this.settings.display_format );
 			
 			
 			// wrap the datepicker (only if it hasn't already been wrapped)
-			if( $('body > #ui-datepicker-div').exists() )
-			{
+			if( $('body > #ui-datepicker-div').exists() ) {
+			
 				$('body > #ui-datepicker-div').wrap('<div class="acf-ui-datepicker" />');
+				
 			}
 			
 		},
 		
-		blur : function( $input ){
+		blur : function(){
 			
-			if( !$input.val() )
-			{
-				$input.siblings('input[type="hidden"]').val('');
+			if( !this.$input.val() ) {
+			
+				this.$hidden.val('');
+				
 			}
 			
 		}
 		
-	};
-	
-	
-	/*
-	*  acf/setup_fields
-	*
-	*  run init function on all elements for this field
-	*
-	*  @type	event
-	*  @date	20/07/13
-	*
-	*  @param	{object}	e		event object
-	*  @param	{object}	el		DOM object which may contain new ACF elements
-	*  @return	N/A
-	*/
-	
-	acf.add_action('ready append', function( $el ){
-		
-		acf.get_fields({ type : 'date_picker'}, $el).each(function(){
-			
-			acf.fields.date_picker.init( $(this).find('.acf-date_picker') );
-			
-		});
-		
-	});
-		
-	
-	/*
-	*  Events
-	*
-	*  jQuery events for this field
-	*
-	*  @type	event
-	*  @date	1/06/13
-	*
-	*/
-	
-	$(document).on('blur', '.acf-date_picker input[type="text"]', function( e ){
-		
-		acf.fields.date_picker.blur( $(this) );
-					
 	});
 	
-
 })(jQuery);
 
 /* **********************************************
@@ -2866,106 +3533,63 @@ frame.on('all', function( e ) {
 
 (function($){
 	
-	acf.fields.file = {
+	acf.fields.file = acf.field.extend({
 		
-		edit : function( $a ) {
+		type: 'file',
+		$el: null,
+		
+		events: {
+			'click [data-name="add"]': 		'add',
+			'click [data-name="edit"]': 	'edit',
+			'click [data-name="remove"]':	'remove',
+		},
+		
+		focus: function(){
+			
+			this.$el = this.$field.find('.acf-file-uploader');
+			
+			this.settings = acf.get_data( this.$el );
+			
+		},
+		
+		add : function() {
+			
+			// reference
+			var self = this;
+			
 			
 			// vars
-			var $el = $a.closest('.acf-file-uploader'),
-				id = $el.find('[data-name="id"]').val();
+			var field_key = acf.get_data( this.$field, 'key' );
+			
+			
+			// get repeater
+			var $repeater = acf.get_closest_field( this.$field, {type:'repeater'} );
 			
 			
 			// popup
 			var frame = acf.media.popup({
-				'title'			: acf._e('file', 'edit'),
-				'button'		: acf._e('file', 'update'),
-				'mode'			: 'edit',
-				'id'			: id,
-				'select'		: function( attachment, i ) {
-					
-			    	// vars
-			    	var file = {
-				    	id		:	attachment.id,
-				    	title	:	attachment.attributes.title,
-				    	name	:	attachment.attributes.filename,
-				    	url		:	attachment.attributes.url,
-				    	icon	:	attachment.attributes.icon,
-				    	size	:	attachment.attributes.filesize
-			    	};
-			    	
-			    	
-			    	// add file to field
-			        acf.fields.file.add( $el, file );
-					
-				}
-			});
-			
-			
-		},
-		
-		remove : function( $a ) {
-			
-			// vars
-			var $el = $a.closest('.acf-file-uploader');
-			
-			
-			// set atts
-			$el.find('[data-name="icon"]').attr( 'src', '' );
-			$el.find('[data-name="title"]').text( '' );
-		 	$el.find('[data-name="name"]').text( '' ).attr( 'href', '' );
-		 	$el.find('[data-name="size"]').text( '' );
-			$el.find('[data-name="id"]').val( '' ).trigger('change');
-			
-			
-			// remove class
-			$el.removeClass('has-value');
-			
-		},
-		
-		popup : function( $a ) {
-			
-			// el
-			var $el				= $a.closest('.acf-file-uploader'),
-				$field			= acf.get_the_field( $el ),
-				$repeater		= acf.get_the_field( $field );
-			
-			
-			// vars
-			var library 		= acf.get_data( $el, 'library' ),
-				multiple		= false;
 				
+				title:		acf._e('file', 'select'),
+				mode:		'select',
+				type:		'',
+				multiple:	$repeater.exists(),
+				library:	this.settings.library,
 				
-			// get parent
-			if( $repeater.exists() && acf.is_field($repeater, {type : 'repeater'}) ) {
-				
-				multiple = true;
-				
-			}
-			
-			
-			// popup
-			var frame = acf.media.popup({
-				'title'			: acf._e('file', 'select'),
-				'mode'			: 'select',
-				'type'			: '',
-				'multiple'		: multiple,
-				'library'		: library,
-				'select'		: function( attachment, i ) {
+				select: function( attachment, i ) {
 					
 					// select / add another image field?
 			    	if( i > 0 ) {
 			    		
 						// vars
-						var $tr 	= $field.parent(),
-							$next	= false,
-							key 	= acf.get_data( $field, 'key' );
+						var $tr = self.$field.parent(),
+							$next = false;
 							
 						
 						// find next image field
 						$tr.nextAll('.acf-row').not('.clone').each(function(){
 							
 							// get next $field
-							$next = acf.get_field( key, $(this) );
+							$next = acf.get_field( field_key, $(this) );
 							
 							
 							// bail early if $next was not found
@@ -2995,92 +3619,123 @@ frame.on('all', function( e ) {
 						// add extra row if next is not found
 						if( !$next ) {
 							
-							$tr = acf.fields.repeater.set( $repeater ).add();
+							$tr = acf.fields.repeater.doFocus( $repeater ).add();
+							
+							
+							// bail early if no $tr (maximum rows hit)
+							if( !$tr ) {
+								
+								return false;
+								
+							}
 							
 							
 							// get next $field
-							$next = acf.get_field( key, $tr );
+							$next = acf.get_field( field_key, $tr );
 							
 						}
 						
 						
 						// update $el
-						$el = $next.find('.acf-file-uploader');
+						self.doFocus( $next );
 						
 					}
 											
 					
 			    	// vars
 			    	var file = {
-				    	id		:	attachment.id,
-				    	title	:	attachment.attributes.title,
-				    	name	:	attachment.attributes.filename,
-				    	url		:	attachment.attributes.url,
-				    	icon	:	attachment.attributes.icon,
-				    	size	:	attachment.attributes.filesize
+				    	id:		attachment.id,
+				    	title:	attachment.attributes.title,
+				    	name:	attachment.attributes.filename,
+				    	url:	attachment.attributes.url,
+				    	icon:	attachment.attributes.icon,
+				    	size:	attachment.attributes.filesize
 			    	};
 			    	
 			    	
 			    	// add file to field
-			        acf.fields.file.add( $el, file );
+			        self.render( file );
 					
 				}
 			});
 			
-			
 		},
-
-		add : function( $el, file ){
+		
+		render : function( file ){
 			
 			// set atts
-			$el.find('[data-name="icon"]').attr( 'src', file.icon );
-			$el.find('[data-name="title"]').text( file.title );
-		 	$el.find('[data-name="name"]').text( file.name ).attr( 'href', file.url );
-		 	$el.find('[data-name="size"]').text( file.size );
-			$el.find('[data-name="id"]').val( file.id ).trigger('change');
+			this.$el.find('[data-name="icon"]').attr( 'src', file.icon );
+			this.$el.find('[data-name="title"]').text( file.title );
+		 	this.$el.find('[data-name="name"]').text( file.name ).attr( 'href', file.url );
+		 	this.$el.find('[data-name="size"]').text( file.size );
+			this.$el.find('[data-name="id"]').val( file.id ).trigger('change');
 			
 					 	
 		 	// set div class
-		 	$el.addClass('has-value');
+		 	this.$el.addClass('has-value');
 	
+		},
+		
+		edit : function() {
+			
+			// reference
+			var self = this;
+			
+			
+			// vars
+			var id = this.$el.find('[data-name="id"]').val();
+			
+			
+			// popup
+			var frame = acf.media.popup({
+			
+				title:		acf._e('file', 'edit'),
+				button:		acf._e('file', 'update'),
+				mode:		'edit',
+				id:			id,
+				
+				select:	function( attachment, i ) {
+					
+			    	// vars
+			    	var file = {
+				    	id:		attachment.id,
+				    	title:	attachment.attributes.title,
+				    	name:	attachment.attributes.filename,
+				    	url:	attachment.attributes.url,
+				    	icon:	attachment.attributes.icon,
+				    	size:	attachment.attributes.filesize
+			    	};
+			    	
+			    	
+			    	// add file to field
+			        self.render( file );
+					
+				}
+			});
+			
+		},
+		
+		remove : function() {
+			
+			// vars
+	    	var file = {
+		    	id:		'',
+		    	title:	'',
+		    	name:	'',
+		    	url:	'',
+		    	icon:	'',
+		    	size:	''
+	    	};
+	    	
+	    	
+	    	// add file to field
+	        this.render( file );
+	        
+	        
+			// remove class
+			this.$el.removeClass('has-value');
+			
 		}
-		
-	};
-	
-	
-	/*
-	*  Events
-	*
-	*  jQuery events for this field
-	*
-	*  @type	function
-	*  @date	1/03/2011
-	*
-	*  @param	N/A
-	*  @return	N/A
-	*/
-	
-	$(document).on('click', '.acf-file-uploader [data-name="remove-button"]', function( e ){
-		
-		e.preventDefault();
-		
-		acf.fields.file.remove( $(this) );
-			
-	});
-	
-	$(document).on('click', '.acf-file-uploader [data-name="edit-button"]', function( e ){
-		
-		e.preventDefault();
-		
-		acf.fields.file.edit( $(this) );
-			
-	});
-	
-	$(document).on('click', '.acf-file-uploader [data-name="add-button"]', function( e ){
-		
-		e.preventDefault();
-		
-		acf.fields.file.popup( $(this) );
 		
 	});
 	
@@ -3629,86 +4284,61 @@ frame.on('all', function( e ) {
 
 (function($){
 	
-	acf.fields.image = {
-				
-		edit : function( $a ) {
+	acf.fields.image = acf.field.extend({
+		
+		type: 'image',
+		$el: null,
+		
+		events: {
+			'click [data-name="add"]': 		'add',
+			'click [data-name="edit"]': 	'edit',
+			'click [data-name="remove"]':	'remove',
+		},
+		
+		focus: function(){
+			
+			this.$el = this.$field.find('.acf-image-uploader');
+			
+			this.settings = acf.get_data( this.$el );
+			
+		},
+		
+		add: function() {
+			
+			// reference
+			var self = this;
+			
 			
 			// vars
-			var $el = $a.closest('.acf-image-uploader'),
-				id = $el.find('[data-name="value-id"]').val();
+			var field_key = acf.get_data( this.$field, 'key' );
+			
+			
+			// get repeater
+			var $repeater = acf.get_closest_field( this.$field, {type:'repeater'} );
 			
 			
 			// popup
 			var frame = acf.media.popup({
-				'title'			: acf._e('image', 'edit'),
-				'button'		: acf._e('image', 'update'),
-				'mode'			: 'edit',
-				'id'			: id
-			});
-			
-		},
-		
-		remove : function( $a ) {
-			
-			// vars
-			var $el = $a.closest('.acf-image-uploader');
-			
-			
-			// set atts
-		 	$el.find('[data-name="value-url"]').attr( 'src', '' );
-			$el.find('[data-name="value-id"]').val('').trigger('change');
-			
-			
-			// remove class
-			$el.removeClass('has-value');
-			
-		},
-		
-		popup : function( $a ) {
-			
-			// el
-			var $el				= $a.closest('.acf-image-uploader'),
-				$field			= acf.get_the_field( $el ),
-				$repeater		= acf.get_the_field( $field );
-			
-			
-			// vars
-			var library 		= acf.get_data( $el, 'library' ),
-				preview_size	= acf.get_data( $el, 'preview_size' ),
-				multiple		= false;
-				
-				
-			// get parent
-			if( $repeater.exists() && acf.is_field($repeater, {type : 'repeater'}) ) {
-				
-				multiple = true;
-				
-			}
-			
-			
-			// popup
-			var frame = acf.media.popup({
-				'title'			: acf._e('image', 'select'),
-				'mode'			: 'select',
-				'type'			: 'image',
-				'multiple'		: multiple,
-				'library'		: library,
-				'select'		: function( attachment, i ) {
+				'title'		: acf._e('image', 'select'),
+				'mode'		: 'select',
+				'type'		: 'image',
+				'multiple'	: $repeater.exists(),
+				'library'	: this.settings.library,
+				'select'	: function( attachment, i ) {
 					
 					// select / add another image field?
 			    	if( i > 0 ) {
 			    		
 						// vars
-						var $tr 	= $field.parent(),
-							$next	= false,
-							key 	= acf.get_data( $field, 'key' );
+						var $tr = self.$field.parent(),
+							$next = false;
 							
 						
 						// find next image field
 						$tr.nextAll('.acf-row').not('.clone').each(function(){
 							
 							// get next $field
-							$next = acf.get_field( key, $(this) );
+							$next = acf.get_field( field_key, $(this) );
 							
 							
 							// bail early if $next was not found
@@ -3737,36 +4367,31 @@ frame.on('all', function( e ) {
 						// add extra row if next is not found
 						if( !$next ) {
 							
-							$tr = acf.fields.repeater.set( $repeater ).add();
+							$tr = acf.fields.repeater.doFocus( $repeater ).add();
+							
+							
+							// bail early if no $tr (maximum rows hit)
+							if( !$tr ) {
+								
+								return false;
+								
+							}
 							
 							
 							// get next $field
-							$next = acf.get_field( key, $tr );
+							$next = acf.get_field( field_key, $tr );
 							
 						}
 						
 						
 						// update $el
-						$el = $next.find('.acf-image-uploader');
+						self.doFocus( $next );
 						
 					}
 					
 					
-			    	// vars
-			    	var image_id = attachment.id,
-			    		image_url = attachment.attributes.url;
-			    	
-					
-			    	// is preview size available?
-			    	if( attachment.attributes.sizes && attachment.attributes.sizes[ preview_size ] ) {
-			    	
-				    	image_url = attachment.attributes.sizes[ preview_size ].url;
-				    	
-			    	}
-			    	
-			    	
-			    	// add image to field
-			        acf.fields.image.add( $el, image_id, image_url );
+			    	// add file to field
+			        self.render( attachment );
 					
 				}
 			});
@@ -3774,54 +4399,72 @@ frame.on('all', function( e ) {
 			
 		},
 		
-		add : function( $el, id, url ){
+		render: function( attachment ){
 			
+			// override url
+			if( acf.isset(attachment, 'attributes', 'sizes', this.settings.preview_size, 'url') ) {
+	    	
+		    	attachment.url = attachment.attributes.sizes[ this.settings.preview_size ].url;
+		    	
+	    	}
+	    	
+	    	
 			// set atts
-		 	$el.find('[data-name="value-url"]').attr( 'src', url );
-			$el.find('[data-name="value-id"]').val( id ).trigger('change');
+		 	this.$el.find('[data-name="image"]').attr( 'src', attachment.url );
+			this.$el.find('[data-name="id"]').val( attachment.id ).trigger('change');
 			
 			
-			// add class
-			$el.addClass('has-value');
+			// set div class
+		 	this.$el.addClass('has-value');
 	
+		},
+		
+		edit: function() {
+			
+			// reference
+			var self = this;
+			
+			
+			// vars
+			var id = this.$el.find('[data-name="id"]').val();
+			
+			
+			// popup
+			var frame = acf.media.popup({
+			
+				title:		acf._e('image', 'edit'),
+				button:		acf._e('image', 'update'),
+				mode:		'edit',
+				id:			id,
+				
+				select:	function( attachment, i ) {
+				
+			    	// add file to field
+			        self.render( attachment );
+					
+				}
+				
+			});
+			
+		},
+		
+		remove: function() {
+			
+			// vars
+	    	var attachment = {
+		    	id:		'',
+		    	url:	''
+	    	};
+	    	
+	    	
+	    	// add file to field
+	        this.render( attachment );
+	        
+	        
+			// remove class
+			this.$el.removeClass('has-value');
+			
 		}
-		
-	};
-	
-	
-	/*
-	*  Events
-	*
-	*  jQuery events for this field
-	*
-	*  @type	function
-	*  @date	1/03/2011
-	*
-	*  @param	N/A
-	*  @return	N/A
-	*/
-	
-	$(document).on('click', '.acf-image-uploader [data-name="remove-button"]', function( e ){
-		
-		e.preventDefault();
-		
-		acf.fields.image.remove( $(this) );
-			
-	});
-	
-	$(document).on('click', '.acf-image-uploader [data-name="edit-button"]', function( e ){
-		
-		e.preventDefault();
-		
-		acf.fields.image.edit( $(this) );
-			
-	});
-	
-	$(document).on('click', '.acf-image-uploader [data-name="add-button"]', function( e ){
-		
-		e.preventDefault();
-		
-		acf.fields.image.popup( $(this) );
 		
 	});
 	
@@ -4107,58 +4750,43 @@ acf.add_action('ready append', function( $el ){
 
 (function($){
 	
-	/*
-	*  Radio
-	*
-	*  static model and events for this field
-	*
-	*  @type	event
-	*  @date	1/06/13
-	*
-	*/
-	
-	acf.fields.radio = {
-	
-		change : function( $radio ){
+	acf.fields.radio = acf.field.extend({
+		
+		type: 'radio',
+		$selected: null,
+		$other: null,
+		
+		actions: {
+			'ready':	'render',
+			'append':	'render'
+		},
+		
+		events: {
+			'change input[type="radio"]': 'render',
+		},
+		
+		focus: function(){
 			
-			// vars
-			var $ul = $radio.closest('ul'),
-				$val = $ul.find('input[type="radio"]:checked'),
-				$other = $ul.find('input[type="text"]');
+			this.$selected = this.$field.find('input[type="radio"]:checked');
+			this.$other = this.$field.find('input[type="text"]');
 			
+		},
+		
+		render: function(){
 			
-			if( $val.val() == 'other' )
-			{
-				$other.removeAttr('disabled');
-				$other.attr('name', $val.attr('name'));
+			if( this.$selected.val() === 'other' ) {
+			
+				this.$other.removeAttr('disabled').attr('name', this.$selected.attr('name'));
+				
+			} else {
+				
+				this.$other.attr('disabled', 'disabled').attr('name', '');
+				
 			}
-			else
-			{
-				$other.attr('disabled', 'disabled');
-				$other.attr('name', '');
-			}
+			
 		}
-	};
-	
-	
-	/*
-	*  Events
-	*
-	*  jQuery events for this field
-	*
-	*  @type	function
-	*  @date	1/03/2011
-	*
-	*  @param	N/A
-	*  @return	N/A
-	*/
-	
-	$(document).on('change', '.acf-radio-list input[type="radio"]', function( e ){
 		
-		acf.fields.radio.change( $(this) );
-		
-	});
-	
+	});	
 
 })(jQuery);
 
@@ -4168,119 +4796,196 @@ acf.add_action('ready append', function( $el ){
 
 (function($){
 	
-	/*
-	*  Relationship
-	*
-	*  static model for this field
-	*
-	*  @type	event
-	*  @date	1/06/13
-	*
-	*/
-	
-	acf.fields.relationship = {
+	acf.fields.relationship = acf.field.extend({
 		
-		$el : null,
-		$wrap : null,
-		$input : null,
-		$filters : null,
-		$choices : null,
-		$values : null,
-				
-		o : {},
+		type: 'relationship',
 		
-		set : function( o ){
+		$el: null,
+		$input: null,
+		$filters: null,
+		$choices: null,
+		$values: null,
+		
+		actions: {
+			'ready':	'initialize',
+			'append':	'initialize'
+		},
+		
+		events: {
+			'keypress [data-filter]': 			'submit_filter',
+			'change [data-filter]': 			'change_filter',
+			'keyup [data-filter]': 				'change_filter',
+			'click .choices .acf-rel-item': 	'add_item',
+			'click [data-name="remove_item"]': 	'remove_item'
+		},
+		
+		focus: function(){
 			
-			// merge in new option
-			$.extend( this, o );
+			this.$el = this.$field.find('.acf-relationship');
+			this.$input = this.$el.find('.acf-hidden input');
+			this.$choices = this.$el.find('.choices'),
+			this.$values = this.$el.find('.values');
 			
-			
-			// find elements
-			this.$wrap = this.$el.find('.acf-relationship');
-			this.$input = this.$wrap.find('.acf-hidden input');
-			this.$choices = this.$wrap.find('.choices'),
-			this.$values = this.$wrap.find('.values');
-			
-			
-			// get options
-			this.o = acf.get_data( this.$wrap );
-			
-			
-			// return this for chaining
-			return this;
+			this.settings = acf.get_data( this.$el );
 			
 		},
 		
-		init : function(){
+		initialize: function(){
 			
 			// reference
-			var _this = this;
+			var self = this,
+				$field = this.$field,
+				$el = this.$el,
+				$input = this.$input;
 			
 			
 			// right sortable
 			this.$values.children('.list').sortable({
-				//axis					:	'y',
-				items					:	'li',
-				forceHelperSize			:	true,
-				forcePlaceholderSize	:	true,
-				scroll					:	true,
-				update					:	function(){
+			
+				items:					'li',
+				forceHelperSize:		true,
+				forcePlaceholderSize:	true,
+				scroll:					true,
+				
+				update:	function(){
 					
-					_this.$input.trigger('change');
+					$input.trigger('change');
 					
 				}
+				
 			});
 			
 			
+			this.$choices.children('.list').scrollTop(0).on('scroll', function(e){
+				
+				// bail early if no more results
+				if( $el.hasClass('is-loading') || $el.hasClass('is-empty') ) {
+				
+					return;
+					
+				}
+				
+				
+				// Scrolled to bottom
+				if( $(this).scrollTop() + $(this).innerHeight() >= $(this).get(0).scrollHeight ) {
+					
+					var paged = parseInt( $el.attr('data-paged') );
+					
+					
+					// update paged
+					$el.attr('data-paged', (paged + 1) );
+					
+					
+					// fetch
+					self.doFocus($field);
+					self.fetch();
+				}
+				
+			});
+			
+			
+			/*
+var scroll_timer = null;
+			var scroll_event = function( e ){
+				
+				console.log( 'scroll_event' );
+				
+				if( scroll_timer) {
+					
+			        clearTimeout( scroll_timer );
+			        
+			    }
+			    
+			    
+			    scroll_timer = setTimeout(function(){
+				    
+				    
+				    if( $field.is(':visible') && acf.is_in_view($field) ) {
+						
+						// fetch
+						self.doFocus($field);
+						self.fetch();
+						
+						
+						$(window).off('scroll', scroll_event);
+						
+					}
+				    
+				    
+			    }, 100);			    
+			    				
+				
+			};
+			
+						
+			$(window).on('scroll', scroll_event);
+			
+*/
 			// ajax fetch values for left side
 			this.fetch();
-					
+			
 		},
 		
-		fetch : function(){
+		fetch: function(){
 			
 			// reference
-			var _this = this,
-				$el = this.$el;
+			var self = this,
+				$field = this.$field;
 			
 			
-			// add loading class, stops scroll loading
-			this.$choices.children('.list').html('<p>' + acf._e('relationship', 'loading') + '...</p>');
+			// add class
+			this.$el.addClass('is-loading');
 			
 			
 			// vars
-			var data = {
-				action		: 'acf/fields/relationship/query',
-				field_key	: this.$el.attr('data-key'),
-				nonce		: acf.get('nonce'),
-				post_id		: acf.get('post_id'),
-			};
+			var data = acf.prepare_for_ajax({
+				action:		'acf/fields/relationship/query',
+				field_key:	acf.get_field_key($field),
+				post_id:	acf.get('post_id'),
+			});
 			
 			
 			// merge in wrap data
-			$.extend(data, this.o);
+			// don't use this.settings becuase they are outdated
+			$.extend(data, acf.get_data( this.$el ));
+			
+			
+			// clear html if is new query
+			if( data.paged == 1 ) {
+				
+				this.$choices.children('.list').html('')
+				
+			}
+			
+			
+			// add message
+			this.$choices.children('.list').append('<p>' + acf._e('relationship', 'loading') + '...</p>');
 
 			
 			// abort XHR if this field is already loading AJAX data
-			if( this.$el.data('xhr') )
-			{
+			if( this.$el.data('xhr') ) {
+			
 				this.$el.data('xhr').abort();
+				
 			}
 			
 			
 			// get results
 		    var xhr = $.ajax({
-		    	url			: acf.get('ajaxurl'),
-				dataType	: 'json',
-				type		: 'get',
-				cache		: true,
-				data		: data,
-				success			:	function( json ){
+		    
+		    	url:		acf.get('ajaxurl'),
+				dataType:	'json',
+				type:		'post',
+				data:		data,
+				
+				success: function( json ){
 					
 					// render
-					_this.set({ $el : $el }).render( json );
+					self.doFocus($field);
+					self.render(json);
 					
 				}
+				
 			});
 			
 			
@@ -4289,122 +4994,217 @@ acf.add_action('ready append', function( $el ){
 			
 		},
 		
-		render : function( json ){
+		render: function( json ){
 			
-			// reference
-			var _this = this;
+			// remove loading class
+			this.$el.removeClass('is-loading is-empty');
+			
+			
+			// remove p tag
+			this.$choices.children('.list').children('p').remove();
 			
 			
 			// no results?
-			if( ! json || ! json.length )
-			{
-				this.$choices.children('.list').html( '<li><p>' + acf._e('relationship', 'empty') + '</p></li>' );
+			if( !json || !json.length ) {
+			
+				// add class
+				this.$el.addClass('is-empty');
+			
+				
+				// add message
+				if( this.settings.paged == 1 ) {
+				
+					this.$choices.children('.list').append('<p>' + acf._e('relationship', 'empty') + '</p>');
+			
+				}
 
+				
+				// return
 				return;
+				
 			}
 			
 			
-			// append new results
-			this.$choices.children('.list').html( this.walker(json) );
+			// get new results
+			var $new = $( this.walker(json) );
 			
-						
+				
 			// apply .disabled to left li's
-			this.$values.find('.acf-relationship-item').each(function(){
+			this.$values.find('.acf-rel-item').each(function(){
 				
 				var id = $(this).attr('data-id');
 				
-				_this.$choices.find('.acf-relationship-item[data-id="' + id + '"]').addClass('disabled');
+				$new.find('.acf-rel-item[data-id="' + id + '"]').addClass('disabled');
 				
 			});
 			
 			
 			// underline search match
-			if( this.o.s )
-			{
-				var s = this.o.s;
+			if( this.settings.s ) {
+			
+				var s = this.settings.s;
 				
-				this.$choices.find('.acf-relationship-item:contains("' + s + '")').each(function(){
+				$new.find('.acf-rel-item').each(function(){
 					
-					var html = $(this).html().replace( s, '<span class="match">' + s + '</span>');
+					// vars
+					var find = $(this).text(),
+						replace = find.replace( new RegExp('(' + s + ')', 'gi'), '<b>$1</b>');
 					
-					$(this).html( html );
+					$(this).html( $(this).html().replace(find, replace) );	
+									
 				});
 				
 			}
 			
+			
+			// append
+			this.$choices.children('.list').append( $new );
+			
+			
+			// merge together groups
+			var label = '',
+				$list = null;
+				
+			this.$choices.find('.acf-rel-label').each(function(){
+				
+				if( $(this).text() == label ) {
+					
+					$list.append( $(this).siblings('ul').html() );
+					
+					$(this).parent().remove();
+					
+					return;
+				}
+				
+				
+				// update vars
+				label = $(this).text();
+				$list = $(this).siblings('ul');
+				
+			});
+			
+			
 		},
 		
-		walker : function( data ){
+		walker: function( data ){
 			
 			// vars
 			var s = '';
 			
 			
 			// loop through data
-			if( $.isArray(data) )
-			{
-				for( var k in data )
-				{
+			if( $.isArray(data) ) {
+			
+				for( var k in data ) {
+				
 					s += this.walker( data[ k ] );
+					
 				}
-			}
-			else if( $.isPlainObject(data) )
-			{
+				
+			} else if( $.isPlainObject(data) ) {
+				
 				// optgroup
-				if( data.children !== undefined )
-				{
-					s += '<li><span class="acf-relationship-label">' + data.text + '</span><ul class="acf-bl">';
+				if( data.children !== undefined ) {
+					
+					s += '<li><span class="acf-rel-label">' + data.text + '</span><ul class="acf-bl">';
 					
 						s += this.walker( data.children );
 					
 					s += '</ul></li>';
+					
+				} else {
+				
+					s += '<li><span class="acf-rel-item" data-id="' + data.id + '">' + data.text + '</span></li>';
+					
 				}
-				else
-				{
-					s += '<li><span class="acf-relationship-item" data-id="' + data.id + '">' + data.text + '</span></li>';
-				}
+				
 			}
 			
 			
+			// return
 			return s;
+			
 		},
 		
-		add : function( $span ){
+		submit_filter: function( e ){
+			
+			// don't submit form
+			if( e.which == 13 ) {
+				
+				e.preventDefault();
+				
+			}
+			
+		},
+		
+		change_filter: function( e ){
+			
+			// vars
+			var val = e.$el.val(),
+				filter = e.$el.attr('data-filter');
+				
+			
+			// Bail early if filter has not changed
+			if( this.$el.attr('data-' + filter) == val ) {
+			
+				return;
+				
+			}
+			
+			
+			// update attr
+			this.$el.attr('data-' + filter, val);
+			
+			
+			// reset paged
+			this.$el.attr('data-paged', 1);
+		    
+		    
+		    // fetch
+		    this.fetch();
+			
+		},
+		
+		add_item: function( e ){
 			
 			// max posts
-			if( this.o.max > 0 )
-			{
-				if( this.$values.find('.acf-relationship-item').length >= this.o.max )
-				{
-					alert( acf.l10n.relationship.max.replace('{max}', this.o.max) );
-					return false;
+			if( this.settings.max > 0 ) {
+			
+				if( this.$values.find('.acf-rel-item').length >= this.settings.max ) {
+				
+					alert( acf._e('relationship', 'max').replace('{max}', this.settings.max) );
+					
+					return;
+					
 				}
+				
 			}
 			
 			
 			// can be added?
-			if( $span.hasClass('disabled') )
-			{
+			if( e.$el.hasClass('disabled') ) {
+			
 				return false;
+				
 			}
 			
 			
 			// disable
-			$span.addClass('disabled');
+			e.$el.addClass('disabled');
 			
 			
 			// template
-			var data = {
-					value	:	$span.attr('data-id'),
-					text	:	$span.html(),
-					name	:	this.$input.attr('name')
-				},
-				tmpl = _.template(acf.l10n.relationship.tmpl_li, data);
+			var html = [
+				'<li>',
+					'<input type="hidden" name="' + this.$input.attr('name') + '[]" value="' + e.$el.attr('data-id') + '" />',
+					'<span data-id="' + e.$el.attr('data-id') + '" class="acf-rel-item">' + e.$el.html(),
+						'<a href="#" class="acf-icon small dark" data-name="remove_item"><i class="acf-sprite-remove"></i></a>',
+					'</span>',
+				'</li>'].join('');
+						
 			
-			
-	
 			// add new li
-			this.$values.children('.list').append( tmpl )
+			this.$values.children('.list').append( html )
 			
 			
 			// trigger change on new_li
@@ -4412,13 +5212,15 @@ acf.add_action('ready append', function( $el ){
 			
 			
 			// validation
-			this.$el.removeClass('error');
+			acf.validation.remove_error( this.$field );
 			
 		},
-		remove : function( $span ){
+		
+		remove_item : function( e ){
 			
 			// vars
-			var id = $span.attr('data-id');
+			var $span = e.$el.parent(),
+				id = $span.attr('data-id');
 			
 			
 			// remove
@@ -4426,7 +5228,7 @@ acf.add_action('ready append', function( $el ){
 			
 			
 			// show
-			this.$choices.find('.acf-relationship-item[data-id="' + id + '"]').removeClass('disabled');
+			this.$choices.find('.acf-rel-item[data-id="' + id + '"]').removeClass('disabled');
 			
 			
 			// trigger change on new_li
@@ -4434,104 +5236,7 @@ acf.add_action('ready append', function( $el ){
 			
 		}
 		
-	};
-	
-	
-	/*
-	*  acf/setup_fields
-	*
-	*  run init function on all elements for this field
-	*
-	*  @type	event
-	*  @date	20/07/13
-	*
-	*  @param	{object}	e		event object
-	*  @param	{object}	el		DOM object which may contain new ACF elements
-	*  @return	N/A
-	*/
-	
-	acf.add_action('ready append', function( $el ){
-		
-		acf.get_fields({ type : 'relationship'}, $el).each(function(){
-			
-			acf.fields.relationship.set({ $el : $(this) }).init();
-			
-		});
-		
 	});
-	
-	
-	/*
-	*  Events
-	*
-	*  jQuery events for this field
-	*
-	*  @type	function
-	*  @date	1/03/2011
-	*
-	*  @param	N/A
-	*  @return	N/A
-	*/
-	
-	$(document).on('keypress', '.acf-relationship .filters [data-filter]', function( e ){
-		
-		// don't submit form
-		if( e.which == 13 )
-		{
-			e.preventDefault();
-		}
-		
-	});
-	
-	
-	$(document).on('change keyup', '.acf-relationship .filters [data-filter]', function(e){
-		
-		// vars
-		var val = $(this).val(),
-			filter = $(this).attr('data-filter'),
-			$wrap = $(this).closest('.acf-relationship');
-			$el = $wrap.closest('.acf-field');
-			
-		
-		// Bail early if filter has not changed
-		if( $wrap.attr('data-' + filter) == val )
-		{
-			return;
-		}
-		
-		
-		// update attr
-		$wrap.attr('data-' + filter, val);
-		
-	    
-	    // fetch
-	    acf.fields.relationship.set({ $el : $el }).fetch();
-		
-	});
-
-	
-	$(document).on('click', '.acf-relationship .choices .acf-relationship-item', function( e ){
-		
-		e.preventDefault();
-		
-		acf.fields.relationship.set({ $el : $(this).closest('.acf-field') }).add( $(this) );
-		
-		$(this).blur();
-		
-	});
-	
-	$(document).on('click', '.acf-relationship .values .acf-icon', function( e ){
-		
-		e.preventDefault();
-		
-		acf.fields.relationship.set({ $el : $(this).closest('.acf-field') }).remove( $(this).closest('.acf-relationship-item') );
-		
-		$(this).blur();
-		
-	});
-	
-	
-	
 	
 
 })(jQuery);
@@ -4542,294 +5247,394 @@ acf.add_action('ready append', function( $el ){
 
 (function($){
 	
-	acf.fields.select = {
+	function add_select2( $select, settings ) {
 		
-		init : function( $select ){
+		// vars
+		settings = $.extend({
+			'allow_null':	false,
+			'placeholder':	'',
+			'multiple':		false,
+			'ajax':			false,
+			'action':		'',
+			'pagination':	false
+		}, settings);
+		
+				
+		// vars
+		var $input = $select.siblings('input');
+		
+		
+		// select2 args
+		var args = {
+			width			: '100%',
+			allowClear		: settings.allow_null,
+			placeholder		: settings.placeholder,
+			multiple		: settings.multiple,
+			data			: [],
+			escapeMarkup	: function( m ){ return m; }
+		};
+		
+		
+		// customize HTML for selected choices
+		if( settings.multiple ) {
 			
-			// validate $select
-			if( ! $select.exists() )
-			{
-				return false;
+			args.formatSelection = function( object, $div ){
+				
+				$div.parent().append('<input type="hidden" class="acf-select2-multi-choice" name="' + $select.attr('name') + '" value="' + object.id + '" />');
+				
+				return object.text;
+			}
+		}
+		
+		
+		// remove the blank option as we have a clear all button!
+		if( settings.allow_null ) {
+			
+			args.placeholder = settings.placeholder;
+			$select.find('option[value=""]').remove();
+			
+		}
+		
+		
+		// vars
+		var selection = $input.val().split(','),
+			initial_selection = [];
+			
+		
+		// populate args.data
+		var optgroups = {};
+		
+		$select.find('option').each(function( i ){
+			
+			// var
+			var parent = '_root';
+			
+			
+			// optgroup?
+			if( $(this).parent().is('optgroup') ) {
+			
+				parent = $(this).parent().attr('label');
+				
 			}
 			
 			
-			// vars
-			var o = acf.get_data( $select );
+			// append to choices
+			if( ! optgroups[ parent ] ) {
 			
-			
-			// bail early if no ui
-			if( ! o.ui )
-			{
-				return false;
+				optgroups[ parent ] = [];
+				
 			}
 			
+			optgroups[ parent ].push({
+				id		: $(this).attr('value'),
+				text	: $(this).text()
+			});
 			
-			// vars
-			var $field = acf.get_field_wrap( $select ),
-				$input = $select.siblings('input');
+		});
+		
+
+		$.each( optgroups, function( label, children ){
 			
+			if( label == '_root' ) {
 			
-			// select2 args
-			var args = {
-				width			: '100%',
-				allowClear		: o.allow_null,
-				placeholder		: o.placeholder,
-				multiple		: o.multiple,
-				data			: [],
-				escapeMarkup	: function( m ){ return m; }
+				$.each( children, function( i, child ){
+					
+					args.data.push( child );
+					
+				});
+				
+			} else {
+			
+				args.data.push({
+					text		: label,
+					children	: children
+				});
+				
+			}
+						
+		});
+
+		
+		// re-order options
+		$.each( selection, function( k, value ){
+			
+			$.each( args.data, function( i, choice ){
+				
+				if( value == choice.id ) {
+				
+					initial_selection.push( choice );
+					
+				}
+				
+			});
+						
+		});
+		
+		
+		// ajax
+		if( settings.ajax ) {
+			
+			args.ajax = {
+				url			: acf.get('ajaxurl'),
+				dataType	: 'json',
+				type		: 'post',
+				cache		: false,
+				data		: function (term, page) {
+					
+					// vars
+					var data = {
+						action		: settings.action,
+						field_key	: settings.key,
+						nonce		: acf.get('nonce'),
+						post_id		: acf.get('post_id'),
+						s			: term,
+						paged		: page
+					};
+
+					
+					// return
+					return data;
+					
+				},
+				results: function(data, page){
+					
+					return {
+						results	: data
+					};
+					
+				}
 			};
 			
-			
-			// customize HTML for selected choices
-			if( o.multiple )
-			{
-				args.formatSelection = function( object, $div ){
+			if( settings.pagination ) {
+				
+				args.ajax.results = function( data, page ) {
 					
-					$div.parent().append('<input type="hidden" class="acf-select2-multi-choice" name="' + $select.attr('name') + '" value="' + object.id + '" />');
+					var i = 0;
 					
-					return object.text;
-				}
-			}
-			
-			
-			// remove the blank option as we have a clear all button!
-			if( o.allow_null )
-			{
-				args.placeholder = o.placeholder;
-				$select.find('option[value=""]').remove();
-			}
-			
-			
-			// vars
-			var selection = $input.val().split(','),
-				initial_selection = [];
-				
-			
-			// populate args.data
-			var optgroups = {};
-			
-			$select.find('option').each(function( i ){
-				
-				// var
-				var parent = '_root';
-				
-				
-				// optgroup?
-				if( $(this).parent().is('optgroup') )
-				{
-					parent = $(this).parent().attr('label');
-				}
-				
-				
-				// append to choices
-				if( ! optgroups[ parent ] )
-				{
-					optgroups[ parent ] = [];
-				}
-				
-				optgroups[ parent ].push({
-					id		: $(this).attr('value'),
-					text	: $(this).text()
-				});
-				
-			});
-			
-
-			$.each( optgroups, function( label, children ){
-				
-				if( label == '_root' )
-				{
-					$.each( children, function( i, child ){
+					$.each(data, function(k, v){
 						
-						args.data.push( child );
+						l = 1;
+						
+						if( typeof v.children !== 'undefined' ) {
+							
+							l = v.children.length;
+							
+						}
+						
+						i += l;
 						
 					});
-				}
-				else
-				{
-					args.data.push({
-						text		: label,
-						children	: children
-					});
-				}
-							
-			});
-
-			
-			// re-order options
-			$.each( selection, function( k, value ){
-				
-				$.each( args.data, function( i, choice ){
 					
-					if( value == choice.id )
-					{
-						initial_selection.push( choice );
-					}
 					
-				});
-							
-			});
-			
-			
-			// ajax
-			if( o.ajax )
-			{
-				args.ajax = {
-					url			: acf.get('ajaxurl'),
-					dataType	: 'json',
-					type		: 'get',
-					cache		: true,
-					data		: function (term, page) {
-						
-						// Allow for dynamic action because post_object and user fields use this JS
-						var action = 'acf/fields/' + acf.get_data($field, 'type') + '/query';
-						
-						
-						// vars
-						var data = {
-							action		: action,
-							field_key	: acf.get_data($field, 'key'),
-							nonce		: acf.get('nonce'),
-							post_id		: acf.get('post_id'),
-							s			: term
-						};
-						
-						
-						// return
-						return data;
-						
-					},
-					results		: function (data, page) {
+					// vars
+					return {
+						results	: data,
+						more	: (i >= 20)
+					};
 					
-						// vars
-						return {
-							results : data
-						};
-						
-					}
 				};
 				
-				args.initSelection = function (element, callback) {
+				$input.on("select2-loaded", function(e) { 
 					
-					// single select requires 1 val, not an array
-					if( ! o.multiple )
-					{
-						initial_selection = initial_selection[0];
-					}
-					
-						        
-			        // callback
-			        callback( initial_selection );
-			        
-			    };
+					// merge together groups
+					var label = '',
+						$list = null;
+						
+					$('#select2-drop .select2-results > li > .select2-result-label').each(function(){
+						
+						if( $(this).text() == label ) {
+							
+							$list.append( $(this).siblings('ul').children() );
+							
+							$(this).parent().remove();
+							
+							return;
+						}
+						
+						
+						// update vars
+						label = $(this).text();
+						$list = $(this).siblings('ul');
+						
+					});
+											
+				});	
 			}
 			
 			
-			// filter for 3rd party customization
-			args = acf.apply_filters( 'select2_args', args, $field );
-			
-			
-			// add select2
-			$input.select2( args );
+			args.initSelection = function (element, callback) {
+				
+				// single select requires 1 val, not an array
+				if( ! settings.multiple ) {
+				
+					initial_selection = initial_selection[0];
+					
+				}
+				
+					        
+		        // callback
+		        callback( initial_selection );
+		        
+		    };
+		}
+		
+		
+		// attachment z-index fix
+		args.dropdownCss = {
+			'z-index' : '999999999'
+		};
+		
+		
+		// filter for 3rd party customization
+		args = acf.apply_filters( 'select2_args', args, $select, settings );
+		
+		
+		// add select2
+		$input.select2( args );
 
+		
+		// reorder DOM
+		$input.select2('container').before( $input );
+		
+		
+		// multiple
+		if( settings.multiple ) {
 			
-			// reorder DOM
-			$input.select2('container').before( $input );
-			
-			
-			// multiple
-			if( o.multiple )
-			{
-				// clear input value (allow nothing to be saved) - only for multiple
-				//$input.val('');
-				
-				
-				// sortable
-				$input.select2('container').find('ul.select2-choices').sortable({
-					 //containment: 'parent',
-					 start: function() {
-					 	$input.select2("onSortStart");
-					 },
-					 update: function() {
-					 	$input.select2("onSortEnd");
-					 }
-				});
-			}
+			// clear input value (allow nothing to be saved) - only for multiple
+			//$input.val('');
 			
 			
-			// make sure select is disabled (repeater / flex may enable it!)
-			$select.attr('disabled', 'disabled').addClass('acf-disabled');
+			// sortable
+			$input.select2('container').find('ul.select2-choices').sortable({
+				 //containment: 'parent',
+				 start: function() {
+				 	$input.select2("onSortStart");
+				 },
+				 update: function() {
+				 	$input.select2("onSortEnd");
+				 }
+			});
+		}
+		
+		
+		// make sure select is disabled (repeater / flex may enable it!)
+		$select.attr('disabled', 'disabled').addClass('acf-disabled');
+
+
+	}
+	
+	function remove_select2( $select ) {
+		
+		$select.siblings('.select2-container').remove();
+		
+	}
+	
+	
+	// select
+	acf.fields.select = acf.field.extend({
+		
+		type: 'select',
+		
+		$select: null,
+		settings: {
+			'action':		'',
+			'pagination':	false
 		},
 		
-		remove : function( $select ){
-		
-			if( acf.get_data( $select, 'ui' ) ) {
-				
-				$select.siblings('.select2-container').remove();
+		actions: {
+			'ready':	'render',
+			'append':	'render',
+			'remove':	'remove'
+		},
 
+		focus: function(){
+			
+			// focus on $select
+			this.$select = this.$field.find('select');
+			
+			
+			// bail early if no select field
+			if( !this.$select.exists() ) {
+				
+				return;
+				
 			}
-						
+			
+			
+			// merge in select's settings
+			$.extend(this.settings, acf.get_data( this.$select ));
+			
+			
+			// update action based on type			
+			this.settings.action = 'acf/fields/' + this.type + '/query';
+			
+		},
+		
+		render: function(){
+			
+			// validate ui
+			if( !this.$select.exists() || !this.settings.ui ) {
+				
+				return false;
+				
+			}
+			
+			
+			add_select2( this.$select, this.settings );
+			
+		},
+		
+		remove: function(){
+			
+			// validate ui
+			if( !this.$select.exists() || !this.settings.ui ) {
+				
+				return false;
+				
+			}
+			
+			
+			remove_select2( this.$select );
+			
 		}
-	};
-	
-	
-	/*
-	*  acf/setup_fields
-	*
-	*  run init function on all elements for this field
-	*
-	*  @type	event
-	*  @date	20/07/13
-	*
-	*  @param	{object}	e		event object
-	*  @param	{object}	el		DOM object which may contain new ACF elements
-	*  @return	N/A
-	*/
-	
-	acf.add_action('ready append', function( $el ){
-		
-		acf.get_fields({ type : 'select'}, $el).each(function(){
-			
-			acf.fields.select.init( $(this).find('select') );
-			
-		});
-		
-		acf.get_fields({ type : 'user'}, $el).each(function(){
-			
-			acf.fields.select.init( $(this).find('select') );
-			
-		});
-		
-		acf.get_fields({ type : 'post_object'}, $el).each(function(){
-			
-			acf.fields.select.init( $(this).find('select') );
-			
-		});
-		
-		acf.get_fields({ type : 'page_link'}, $el).each(function(){
-			
-			acf.fields.select.init( $(this).find('select') );
-			
-		});
-		
-		acf.get_fields({ type : 'taxonomy'}, $el).each(function(){
-			
-			acf.fields.select.init( $(this).find('select') );
-			
-		});
 		
 	});
 	
-	acf.add_action('remove', function( $el ){
-		
-		acf.get_fields({ type : 'select'}, $el).each(function(){
-			
-			acf.fields.select.remove( $(this).find('select') );
-			
-		});
-		
-	})
 	
+	// taxonomy
+	acf.fields.taxonomy = acf.fields.select.extend({
+		
+		type: 'taxonomy'
+		
+	});
+	
+	
+	// user
+	acf.fields.user = acf.fields.select.extend({
+		
+		type: 'user'
+		
+	});	
+	
+	
+	// post_object
+	acf.fields.post_object = acf.fields.select.extend({
+		
+		type: 'post_object',
+		
+		settings: {
+			'pagination':	true
+		}
+		
+	});
+	
+	
+	// page_link
+	acf.fields.page_link = acf.fields.post_object.extend({
+		
+		type: 'page_link',
+		
+	});
 	
 
 })(jQuery);
@@ -4839,49 +5644,88 @@ acf.add_action('ready append', function( $el ){
 ********************************************** */
 
 (function($){
-
-	acf.fields.tab = {
+	
+	acf.fields.tab = acf.field.extend({
 		
-		add_group : function( $wrap ){
+		type: 'tab',
+		
+		actions: {
+			'ready':	'initialize',
+			'append':	'initialize',
+			'hide':		'hide',
+			'show':		'show'
+		},
+		
+		initialize: function(){
+			
+			// add tab group if it doesn't exist
+			if( !this.$field.siblings('.acf-tab-wrap').exists() ) {
+			
+				this.add_group();
+				
+			}
+			
+			
+			// add tab
+			this.add_tab();
+			
+		},
+		
+		add_tab : function(){
 			
 			// vars
-			var html = '';
+			var $el = this.$field.find('.acf-tab'),
+				$group = this.$field.siblings('.acf-tab-wrap'),
+				key = this.settings.key;
+			
+			
+			// template
+			var html = [
+				'<li>',
+					'<a class="acf-tab-button" href="#" data-key="' + key + '">' + $el.text() + '</a>',
+				'</li>'].join('');
+				
+				
+			// add tab
+			$group.find('ul').append( html );
+			
+			
+			// show first tab, hide others
+			if( $group.find('li').length == 1 ) {
+				
+				$group.find('li').addClass('active');
+				
+				this.show_tab_fields( this.$field );
+				
+			} else {
+				
+				this.hide_tab_fields( this.$field );
+				
+			}
+			
+		},
+		
+		add_group : function(){
+			
+			// vars
+			var $wrap = this.$field.parent(),
+				html = '';
 			
 			
 			// generate html
-			if( $wrap.is('tbody') )
-			{
+			if( $wrap.is('tbody') ) {
+				
 				html = '<tr class="acf-tab-wrap"><td colspan="2"><ul class="acf-hl acf-tab-group"></ul></td></tr>';
-			}
-			else
-			{
+			
+			} else {
+			
 				html = '<div class="acf-tab-wrap"><ul class="acf-hl acf-tab-group"></ul></div>';
+				
 			}
 			
 			
 			// append html
-			acf.get_fields({ type : 'tab'}, $wrap).first().before( html );
-			
-		},
-		
-		add_tab : function( $field ){
-			
-			// vars
-			var $wrap	= $field.parent(),
-				$tab	= $field.find('.acf-tab'),
-				
-				key		= acf.get_data( $field, 'key'),
-				label 	= $tab.text();
-				
-				
-			// create tab group if it doesn't exist
-			if( ! $wrap.children('.acf-tab-wrap').exists() )
-			{
-				this.add_group( $wrap );
-			}
-			
-			// add tab
-			$wrap.children('.acf-tab-wrap').find('.acf-tab-group').append('<li><a class="acf-tab-button" href="#" data-key="' + key + '">' + label + '</a></li>');
+			this.$field.before( html );
 			
 		},
 		
@@ -4892,32 +5736,35 @@ acf.add_action('ready append', function( $el ){
 			
 			
 			// vars
-			var $wrap	= $a.closest('.acf-tab-wrap').parent(),
-				key		= $a.attr('data-key');
-			
-			
-			// classes
-			$a.parent('li').addClass('active').siblings('li').removeClass('active');
-			
-			
-			// hide / show
-			acf.get_fields({ type : 'tab'}, $wrap).each(function(){
+			var $wrap = $a.closest('.acf-tab-wrap');
 				
-				// vars
-				var $tab = $(this);
+				
+			// add and remove classes
+			$a.parent().addClass('active').siblings().removeClass('active');
+			
+			
+			// loop over 
+			$wrap.siblings('.acf-field[data-type="tab"]').each(function(){
+				
+				// show fields
+				if( $(this).attr('data-key') === $a.attr('data-key') ) {
 					
-				
-				if( acf.is_field( $(this), {key : key} ) )
-				{
 					self.show_tab_fields( $(this) );
+					return;
+					
 				}
-				else
-				{
+				
+				
+				// hide fields
+				if( ! $(this).hasClass('hidden-by-tab') ) {
+					
 					self.hide_tab_fields( $(this) );
+					return;
+					
 				}
 				
 			});
-			
+
 		},
 		
 		show_tab_fields : function( $field ) {
@@ -4925,19 +5772,19 @@ acf.add_action('ready append', function( $el ){
 			// debug
 			//console.log('show tab fields %o', $field);
 			
-			$field.nextAll('.acf-field').each(function(){
+			$field.removeClass('hidden-by-tab');
+			
+			$field.nextUntil('.acf-field[data-type="tab"]', '.acf-field').each(function(){
 				
-				// bail early if hid another tab
-				if( acf.is_field( $(this), {type : 'tab'} ) ) {
-					
-					return false;
-				}
-				
-				
+				// remove class
 				$(this).removeClass('hidden-by-tab');
+				
+				
+				// do action
 				acf.do_action('show_field', $(this));
 				
 			});
+			
 		},
 		
 		hide_tab_fields : function( $field ) {
@@ -4945,78 +5792,121 @@ acf.add_action('ready append', function( $el ){
 			// debug
 			//console.log('hide tab fields %o', $field);
 			
-			$field.nextAll('.acf-field').each(function(){
+			$field.addClass('hidden-by-tab');
+			
+			$field.nextUntil('.acf-field[data-type="tab"]', '.acf-field').each(function(){
 				
-				// bail early if hid another tab
-				if( acf.is_field( $(this), {type : 'tab'} ) ) {
-					
-					return false;
-				}
-				
+				// add class
 				$(this).addClass('hidden-by-tab');
+				
+				
+				// do action
 				acf.do_action('hide_field', $(this));
 				
 			});
+			
 		},
 		
-		refresh : function( $el ){
+		hide: function( $field, context ){
 			
-			// reference
-			var self = this;
-			
-			
-			// trigger
-			$el.find('.acf-tab-group').each(function(){
+			// vars
+			var $a = $field.siblings('.acf-tab-wrap').find('a[data-key="' + this.settings.key + '"]'),
+				$li = $a.parent();
 				
-				$(this).find('.acf-tab-button:first').each(function(){
+			
+			// if this tab field was hidden by conditional_logic, disable it's children to prevent validation
+			if( context == 'conditional_logic' ) {
 				
-					self.toggle( $(this) );
+				$field.nextUntil('.acf-field[data-type="tab"]', '.acf-field').each(function(){
+					
+					acf.conditional_logic.hide_field( $(this) );
 					
 				});
 				
-			});
+			}
+			
+			
+			// bail early if already hidden
+			if( $li.is(':hidden') ) {
+			
+				return;
+				
+			}
+			
+			
+			// visibility
+			$li.hide();
+			
+			
+			// bail early if active tab exists
+			if( $li.siblings('.active').exists() ) {
+			
+				return;
+				
+			}
+			
+			
+			// if sibling tab exists, click it
+			if( $li.siblings(':visible').exists() ) {
+				
+				$li.siblings(':visible').first().children('a').trigger('click');
+				return;
+			}
+			
+			
+			// hide fields under this tab
+			acf.fields.tab.hide_tab_fields( $field );
+			
+		},
+		
+		show: function( $field, context ){
+			
+			// vars
+			var $a = $field.siblings('.acf-tab-wrap').find('a[data-key="' + this.settings.key + '"]'),
+				$li = $a.parent();
+				
+			
+			// if this tab field was shown by conditional_logic, enable it's children to allow validation
+			if( context == 'conditional_logic' ) {
+				
+				$field.nextUntil('.acf-field[data-type="tab"]', '.acf-field').each(function(){
+					
+					acf.conditional_logic.show_field( $(this) );
+					
+				});
+				
+			}
+			
+			
+			// if tab is already visible, then ignore the following functionality
+			if( $li.is(':visible') ) {
+			
+				return;
+				
+			}
+			
+			
+			// visibility
+			$li.show();
+			
+			
+			// bail early if this is the active tab
+			if( $li.hasClass('active') ) {
+			
+				return;
+				
+			}
+			
+			
+			// if the sibling active tab is actually hidden by conditional logic, take ownership of tabs
+			if( !$li.siblings(':visible').exists() ) {
+			
+				// show this tab group
+				$a.trigger('click');
+				
+			}
 			
 		}
-		
-	};
-	
-	
-	/*
-	*  acf/setup_fields
-	*
-	*  run init function on all elements for this field
-	*
-	*  @type	event
-	*  @date	20/07/13
-	*
-	*  @param	{object}	e		event object
-	*  @param	{object}	el		DOM object which may contain new ACF elements
-	*  @return	N/A
-	*/
-	
-	acf.add_action('ready append', function( $el ){
-		
-		// vars
-		var refresh = false;
-		
-		
-		// add tabs
-		acf.get_fields({ type : 'tab'}, $el).each(function(){
-			
-			acf.fields.tab.add_tab( $(this) );
-			
-			refresh = true;
-			
-		});
-		
-		
-		// activate first tab
-		if( refresh ) {
-			
-			acf.fields.tab.refresh( $el );
-			
-		}
-		
 		
 	});
 	
@@ -5044,103 +5934,6 @@ acf.add_action('ready append', function( $el ){
 		$(this).trigger('blur');
 			
 	});
-	
-	
-	acf.add_action('hide_field', function( $field ){
-		
-		// validate
-		if( ! acf.is_field($field, {type : 'tab'}) ) {
-		
-			return;
-			
-		}
-		
-		
-		// vars
-		var $a = $field.siblings('.acf-tab-wrap').find('a[data-key="' + acf.get_data($field, 'key') + '"]'),
-			$li = $a.parent();
-			
-		
-		// bail early if already hidden
-		if( $li.is(':hidden') ) {
-		
-			return;
-			
-		}
-		
-		
-		// visibility
-		$li.hide();
-		
-		
-		// bail early if active tab exists
-		if( $li.siblings('.active').exists() ) {
-		
-			return;
-			
-		}
-		
-		
-		// if sibling tab exists, click it
-		if( $li.siblings(':visible').exists() ) {
-			
-			$li.siblings(':visible').first().children('a').trigger('click');
-			return;
-		}
-		
-		
-		// hide fields under this tab
-		acf.fields.tab.hide_tab_fields( $field );
-		
-	});
-	
-	
-	acf.add_action('show_field', function( $field ){
-		
-		// validate
-		if( ! acf.is_field($field, {type : 'tab'}) ) {
-		
-			return;
-			
-		}
-		
-		
-		// vars
-		var $a = $field.siblings('.acf-tab-wrap').find('a[data-key="' + acf.get_data($field, 'key') + '"]'),
-			$li = $a.parent();
-			
-		
-		// if tab is already visible, then ignore the following functionality
-		if( $li.is(':visible') ) {
-		
-			return;
-			
-		}
-		
-		
-		// visibility
-		$li.show();
-		
-		
-		// bail early if this is the active tab
-		if( $li.hasClass('active') ) {
-		
-			return;
-			
-		}
-		
-		
-		// if the sibling active tab is actually hidden by conditional logic, take ownership of tabs
-		if( !$li.siblings(':visible').exists() ) {
-		
-			// show this tab group
-			$a.trigger('click');
-			
-		}
-		
-
-	});
-	
 	
 	acf.add_filter('validation_complete', function( json, $form ){
 		
@@ -5187,12 +5980,59 @@ acf.add_action('ready append', function( $el ){
 })(jQuery);
 
 /* **********************************************
+     Begin url.js
+********************************************** */
+
+(function($){
+	
+	acf.fields.url = acf.field.extend({
+		
+		type: 'url',
+		$input: null,
+		
+		actions: {
+			'ready':	'render',
+			'append':	'render'
+		},
+		
+		events: {
+			'keyup input[type="url"]': 'render',
+		},
+		
+		focus: function(){
+			
+			this.$input = this.$field.find('input[type="url"]');
+			
+		},
+		
+		render: function(){
+			
+			this.$input.parent().removeClass('valid');
+			
+			if( this.$input.val().substr(0, 4) === 'http' ) {
+				
+				this.$input.parent().addClass('valid');
+				
+			}
+			
+		}
+		
+	});
+
+})(jQuery);
+
+/* **********************************************
      Begin validation.js
 ********************************************** */
 
 (function($){
     
-	acf.validation = {
+	acf.validation = acf.model.extend({
+		
+		actions: {
+			'ready 20': 'onReady'
+		},
+		
 		
 		// vars
 		active	: 1,
@@ -5209,12 +6049,17 @@ acf.add_action('ready append', function( $el ){
 		
 		
 		// functions
-		init : function(){
+		onReady : function(){
+			
+			// read validation setting
+			this.active = acf.get('validation');
+			
 			
 			// bail early if disabled
-			if( this.active == 0 )
-			{
+			if( !this.active ) {
+			
 				return;
+				
 			}
 			
 			
@@ -5340,18 +6185,6 @@ acf.add_action('ready append', function( $el ){
 					
 				// bypass JS and submit form
 				this.ignore = 1;
-				
-				
-				// attempt to find $trigger
-				/*
-if( ! this.$trigger )
-				{
-					if( $form.find('.submit input[type="submit"]').exists() )
-					{
-						this.$trigger = $form.find('.submit input[type="submit"]');
-					}
-				}
-*/
 				
 				
 				// action for 3rd party customization
@@ -5521,12 +6354,6 @@ if( ! this.$trigger )
 			
 		}
 		
-	};
-	
-	acf.add_action('ready', function(){
-		
-		acf.validation.init();
-		
 	});
 	
 
@@ -5538,65 +6365,266 @@ if( ! this.$trigger )
 
 (function($){
 	
-	/*
-	*  WYSIWYG
-	*
-	*  jQuery functionality for this field type
-	*
-	*  @type	object
-	*  @date	20/07/13
-	*
-	*  @param	N/A
-	*  @return	N/A
-	*/
-	
-	acf.fields.wysiwyg = {
+	acf.fields.wysiwyg = acf.field.extend({
 		
-		$el : null,
-		$textarea : null,
+		type: 'wysiwyg',
+		$el: null,
+		$textarea: null,
+		toolbars: {},
 		
-		o : {},
+		actions: {
+			'ready':		'initialize',
+			'append':		'initialize',
+			'remove':		'disable',
+			'sortstart':	'disable',
+			'sortstop':		'enable'
+		},
 		
-		set : function( o ){
+		focus: function(){
 			
-			// merge in new option
-			$.extend( this, o );
-			
-			
-			// find textarea
+			// update vars
+			this.$el = this.$field.find('.wp-editor-wrap').last();
 			this.$textarea = this.$el.find('textarea');
 			
 			
-			// get options
-			this.o = acf.get_data( this.$el );
-			
-			
-			// add ID
-			this.o.id = this.$textarea.attr('id');
-			
-			
-			// return this for chaining
-			return this;
-			
+			// settings
+			this.settings = acf.get_data( this.$el );
+			this.settings.id = this.$textarea.attr('id');
 		},
-		has_tinymce : function(){
 		
-			var r = false;
+		initialize: function(){
 			
-			if( typeof(tinyMCE) == "object" )
-			{
-				r = true;
+			// bail early if no tinymce
+			if( typeof tinyMCEPreInit === 'undefined' ) {
+				
+				return false;
+				
 			}
 			
-			return r;
+			
+			// vars
+			var mceInit = this.get_mceInit(),
+				qtInit = this.get_qtInit();
+			
+				
+			// append settings
+			tinyMCEPreInit.mceInit[ mceInit.id ] = mceInit;
+			tinyMCEPreInit.qtInit[ qtInit.id ] = qtInit;
+			
+			
+			// initialize mceInit
+			if( this.$el.hasClass('tmce-active') ) {
+				
+				try {
+					
+					tinymce.init( mceInit );
+					
+				} catch(e){}
+				
+			}
+			
+
+			// initialize qtInit
+			try {
+			
+				var qtag = quicktags( qtInit );
+				
+				this._buttonsInit( qtag );
+				
+			} catch(e){}
 			
 		},
-		get_toolbar : function(){
+		
+		
+		get_mceInit : function(){
 			
-			// safely get toolbar
-			if( acf.isset( this, 'toolbars', this.o.toolbar ) ) {
+			// reference
+			var $field = this.$field;
 				
-				return this.toolbars[ this.o.toolbar ];
+				
+			// vars
+			var toolbar = this.get_toolbar( this.settings.toolbar ),
+				mceInit = $.extend({}, tinyMCEPreInit.mceInit.acf_content);
+			
+			
+			// selector
+			mceInit.selector = '#' + this.settings.id;
+			
+			
+			// id
+			mceInit.id = this.settings.id; // tinymce v4
+			mceInit.elements = this.settings.id; // tinymce v3
+			
+			
+			// toolbar
+			if( toolbar ) {
+				
+				var k = (tinymce.majorVersion < 4) ? 'theme_advanced_buttons' : 'toolbar';
+				
+				for( var i = 1; i < 5; i++ ) {
+					
+					mceInit[ k + i ] = acf.isset(toolbar, i) ? toolbar[i] : '';
+					
+				}
+				
+			}
+			
+			
+			// events
+			if( tinymce.majorVersion < 4 ) {
+				
+				mceInit.setup = function( ed ){
+					
+					ed.onInit.add(function(ed, event) {
+						
+						// focus
+						$(ed.getBody()).on('focus', function(){
+					
+							acf.validation.remove_error( $field );
+							
+						});
+						
+						$(ed.getBody()).on('blur', function(){
+							
+							// update the hidden textarea
+							// - This fixes a bug when adding a taxonomy term as the form is not posted and the hidden textarea is never populated!
+			
+							// save to textarea	
+							ed.save();
+							
+							
+							// trigger change on textarea
+							$field.find('textarea').trigger('change');
+							
+						});
+					
+					});
+					
+				};
+			
+			} else {
+			
+				mceInit.setup = function( ed ){
+					
+					ed.on('focus', function(e) {
+				
+						acf.validation.remove_error( $field );
+						
+					});
+					
+					ed.on('blur', function(e) {
+						
+						// update the hidden textarea
+						// - This fixes a but when adding a taxonomy term as the form is not posted and the hidden textarea is never populated!
+		
+						// save to textarea	
+						ed.save();
+						
+						
+						// trigger change on textarea
+						$field.find('textarea').trigger('change');
+						
+					});
+					
+				};
+			
+			}
+			
+			
+			// hook for 3rd party customization
+			mceInit = acf.apply_filters('wysiwyg_tinymce_settings', mceInit, mceInit.id);
+			
+			
+			// return
+			return mceInit;
+			
+		},
+		
+		get_qtInit : function(){
+				
+			// vars
+			var qtInit = $.extend({}, tinyMCEPreInit.qtInit.acf_content);
+			
+			
+			// id
+			qtInit.id = this.settings.id;
+			
+			
+			// hook for 3rd party customization
+			qtInit = acf.apply_filters('wysiwyg_quicktags_settings', qtInit, qtInit.id);
+			
+			
+			// return
+			return qtInit;
+			
+		},
+		
+		/*
+		*  disable
+		*
+		*  This function will disable the tinymce for a given field
+		*  Note: txtarea_el is different from $textarea.val() and is the value that you see, not the value that you save.
+		*        this allows text like <--more--> to wok instead of showing as an image when the tinymce is removed
+		*
+		*  @type	function
+		*  @date	1/08/2014
+		*  @since	5.0.0
+		*
+		*  @param	n/a
+		*  @return	n/a
+		*/
+		
+		disable: function(){
+			
+			try {
+				
+				// vars
+				var ed = tinyMCE.get( this.settings.id ),
+					txtarea_el = tinyMCE.DOM.get( this.settings.id );
+					val = txtarea_el.value;
+					
+				
+				// destory
+				ed.destroy();
+				
+				
+				// update value
+				if( this.$field.find('.wp-editor-wrap').hasClass('html-active') ) {
+				
+					txtarea_el.value = val;
+				
+				}
+
+				
+			} catch(e) {}
+			
+		},
+		
+		enable: function(){
+			
+			// bail early if html mode
+			if( this.$field.find('.wp-editor-wrap').hasClass('html-active') ) {
+				
+				return;
+				
+			}
+			
+			
+			try {
+				
+				tinyMCE.init( tinyMCEPreInit.mceInit[ this.settings.id ] );
+				
+			} catch(e) {}
+			
+			
+		},
+		
+		get_toolbar : function( name ){
+			
+			// bail early if toolbar doesn't exist
+			if( typeof this.toolbars[ name ] !== 'undefined' ) {
+				
+				return this.toolbars[ name ];
 				
 			}
 			
@@ -5606,352 +6634,84 @@ if( ! this.$trigger )
 			
 		},
 		
-		init : function(){
-			
-			// vars
-			var toolbar = this.get_toolbar(),
-				command = 'mceAddControl',
-				setting = 'theme_advanced_buttons{i}';
-			
-			
-			// backup
-			var _settings = $.extend( {}, tinyMCE.settings );
-			
-			
-			// v4 settings
-			if( tinymce.majorVersion == 4 ) {
-				
-				command = 'mceAddEditor';
-				setting = 'toolbar{i}';
-				
-			}
-			
-			
-			// add toolbars
-			if( toolbar ) {
-					
-				for( var i = 1; i < 5; i++ ) {
-					
-					// vars
-					var v = '';
-					
-					
-					// load toolbar
-					if( acf.isset( toolbar, 'theme_advanced_buttons' + i ) ) {
-						
-						v = toolbar['theme_advanced_buttons' + i];
-						
-					}
-					
-					
-					// update setting
-					tinyMCE.settings[ setting.replace('{i}', i) ] = v;
-					
-				}
-				
-			}
-			
-			
-			// hook for 3rd party customization
-			tinyMCE.settings = acf.apply_filters('wysiwyg_tinymce_settings', tinyMCE.settings, this.o.id);
-			
-			
-			// add editor
-			tinyMCE.execCommand( command, false, this.o.id);
-			
-			
-			// add events (click, focus, blur) for inserting image into correct editor
-			this.add_events();
-				
-			
-			// restore tinyMCE.settings
-			tinyMCE.settings = _settings;
-			
-			
-			// set active editor to null
-			wpActiveEditor = null;
-					
-		},
 		
-		add_events : function(){
+		/*
+		*  _buttonsInit
+		*
+		*  This function will add the quicktags HTML to a WYSIWYG field. Normaly, this is added via quicktags on document ready,
+		*  however, there is no support for 'append'. Source: wp-includes/js/quicktags.js:245
+		*
+		*  @type	function
+		*  @date	1/08/2014
+		*  @since	5.0.0
+		*
+		*  @param	ed (object) quicktag object
+		*  @return	n/a
+		*/
 		
-			// vars
-			var id = this.o.id,
-				editor = tinyMCE.get( id );
-			
-			
-			// validate
-			if( !editor )
-			{
-				return;
-			}
-			
-			
-			// vars
-			var	$container = $('#wp-' + id + '-wrap'),
-				$body = $( editor.getBody() ),
-				$textarea = $( editor.getElement() );
+		_buttonsInit: function( ed ) {
+			var defaults = ',strong,em,link,block,del,ins,img,ul,ol,li,code,more,close,';
 	
-			
-			// events
-			$container.on('click', function(){
-				
-				acf.validation.remove_error( $container.closest('.acf-field') );
-				
-			});
-			
-			$body.on('focus', function(){
-			
-				wpActiveEditor = id;
-		
-				acf.validation.remove_error( $container.closest('.acf-field') );
-				
-			});
-			
-			$body.on('blur', function(){
-			
-				wpActiveEditor = null;
-				
-				// update the hidden textarea
-				// - This fixes a but when adding a taxonomy term as the form is not posted and the hidden textarea is never populated!
+			canvas = ed.canvas;
+			name = ed.name;
+			settings = ed.settings;
+			html = '';
+			theButtons = {};
+			use = '';
 
-				// save to textarea	
-				editor.save();
-				
-				
-				// trigger change on textarea
-				$textarea.trigger('change');
-				
-			});
-			
+			// set buttons
+			if ( settings.buttons ) {
+				use = ','+settings.buttons+',';
+			}
+
+			for ( i in edButtons ) {
+				if ( !edButtons[i] ) {
+					continue;
+				}
+
+				id = edButtons[i].id;
+				if ( use && defaults.indexOf( ',' + id + ',' ) !== -1 && use.indexOf( ',' + id + ',' ) === -1 ) {
+					continue;
+				}
+
+				if ( !edButtons[i].instance || edButtons[i].instance === inst ) {
+					theButtons[id] = edButtons[i];
+
+					if ( edButtons[i].html ) {
+						html += edButtons[i].html(name + '_');
+					}
+				}
+			}
+
+			if ( use && use.indexOf(',fullscreen,') !== -1 ) {
+				theButtons.fullscreen = new qt.FullscreenButton();
+				html += theButtons.fullscreen.html(name + '_');
+			}
+
+
+			if ( 'rtl' === document.getElementsByTagName('html')[0].dir ) {
+				theButtons.textdirection = new qt.TextDirectionButton();
+				html += theButtons.textdirection.html(name + '_');
+			}
+
+			ed.toolbar.innerHTML = html;
+			ed.theButtons = theButtons;
 			
 		},
-		destroy : function(){
-			
-			// vars
-			var id = this.o.id,
-				command = 'mceRemoveControl';
-			
-			
-			// Remove tinymce functionality.
-			// Due to the media popup destroying and creating the field within such a short amount of time,
-			// a JS error will be thrown when launching the edit window twice in a row.
-			try {
-				
-				// vars
-				var editor = tinyMCE.get( id );
-				
-				
-				// validate
-				if( !editor ) {
-					
-					return;
-					
-				}
-				
-				
-				// v4 settings
-				if( tinymce.majorVersion == 4 ) {
-					
-					command = 'mceRemoveEditor';
-					
-				}
-				
-				
-				// store value
-				var val = editor.getContent();
-				
-				
-				// remove editor
-				tinyMCE.execCommand(command, false, id);
-				
-				
-				// set value
-				this.$textarea.val( val );
-				
-				
-			} catch(e) {
-				
-				//console.log( e );
-				
-			}
-			
-			
-			// set active editor to null
-			wpActiveEditor = null;
-			
-		}
-		
-	};
-	
-	
-	/*
-	*  acf/setup_fields
-	*
-	*  run init function on all elements for this field
-	*
-	*  @type	event
-	*  @date	20/07/13
-	*
-	*  @param	{object}	e		event object
-	*  @param	{object}	el		DOM object which may contain new ACF elements
-	*  @return	N/A
-	*/
-	
-	acf.add_action('ready', function( $el ){
-		
-		// validate
-		if( ! acf.fields.wysiwyg.has_tinymce() ) {
-		
-			return;
-			
-		}
-		
-		
-		// vars
-		var $the_content = $('#wp-content-wrap'),
-			$acf_content = $('#wp-acf_content-wrap'),
-			mode = 'tmce';
-		
-		
-		// move editor to bottom of page
-		if( $acf_content.exists() ) {
-			
-			$acf_content.parent().appendTo('body');
-			
-		}
-				
-		
-		// events
-		acf.add_action('remove', function( $el ){
-		
-			acf.get_fields({ type : 'wysiwyg'}, $el).each(function(){
-				
-				acf.fields.wysiwyg.set({ $el : $(this).find('.acf-wysiwyg-wrap') }).destroy();
-				
-			});
-			
-		}).add_action('sortstart', function( $el ){
-			
-			acf.get_fields({ type : 'wysiwyg'}, $el).each(function(){
-			
-				acf.fields.wysiwyg.set({ $el : $(this).find('.acf-wysiwyg-wrap') }).destroy();
-				
-			});
-			
-		}).add_action('sortstop', function( $el ){
-		
-			acf.get_fields({ type : 'wysiwyg'}, $el).each(function(){
-				
-				acf.fields.wysiwyg.set({ $el : $(this).find('.acf-wysiwyg-wrap') }).init();
-				
-			});
-			
-		}).add_action('append', function( $el ){
-		
-			acf.get_fields({ type : 'wysiwyg'}, $el).each(function(){
-				
-				acf.fields.wysiwyg.set({ $el : $(this).find('.acf-wysiwyg-wrap') }).init();
-				
-			});
-			
-		}).add_action('load', function( $el ){
-			
-			// vars
-			var $fields = acf.get_fields({ type : 'wysiwyg'}, $el);
-			
-			
-			// define mode
-			if( $acf_content.exists() && $acf_content.hasClass('html-active') ) {
-				
-				mode = 'html';
-				
-			}
-			
-			
-			// Add events to content editor
-			if( $the_content.exists() ) {
-			
-				acf.fields.wysiwyg.set({ $el : $the_content }).add_events();
-				
-			}
-			
-			
-			// temp change wysiwyg to visual tab
-			setTimeout(function(){
-				
-				// trigger click on hidden WYSIWYG (to get in HTML mode)
-				if( $acf_content.exists() && mode == 'html' ) {
-					
-					$acf_content.find('#acf_content-tmce').trigger('click');
-				}
-				
-			}, 1);
-			
-			
-			// destroy all WYSIWYG fields
-			// This hack will fix a problem when the WP popup is created and hidden, then the ACF popup (image/file field) is opened
-			setTimeout(function(){
-				
-				$fields.each(function(){
-					
-					acf.fields.wysiwyg.set({ $el : $(this).find('.acf-wysiwyg-wrap') }).destroy();
-					
-				});
-				
-			}, 10);
-			
-			
-			// initialize all WYSIWYG fields
-			setTimeout(function(){
-				
-				$fields.each(function(){
-					
-					acf.fields.wysiwyg.set({ $el : $(this).find('.acf-wysiwyg-wrap') }).init();
-					
-				});
-				
-			}, 11);
-			
-			
-			setTimeout(function(){
-				
-				// trigger click on hidden WYSIWYG (to get in HTML mode)
-				if( $acf_content.exists() && mode == 'html' ) {
-					
-					$acf_content.find('#acf_content-html').trigger('click');
-				}				
-				
-			}, 12);
-			
-			
-		});
-		
 		
 	});
 	
-	
-	/*
-	*  Full screen
-	*
-	*  @description: this hack will hide the 'image upload' button in the WYSIWYG full screen mode if the field has disabled image uploads!
-	*  @since: 3.6
-	*  @created: 26/02/13
-	*/
-	
-	$(document).on('click', '.acf-wysiwyg-wrap .mce_fullscreen', function(){
+
+	$(document).ready(function(){
 		
-		// vars
-		var $wrap = $(this).closest('.acf-wysiwyg-wrap');
-		
-		
-		if( ! acf.get_data( $wrap, 'upload' ) ) {
-		
-			$('#mce_fullscreen_container #mce_fullscreen_add_media').hide();
+		// move acf_content wysiwyg
+		if( $('#wp-acf_content-wrap').exists() ) {
+			
+			$('#wp-acf_content-wrap').parent().appendTo('body');
 			
 		}
 		
 	});
-	
+
 
 })(jQuery);

@@ -40,10 +40,6 @@
 			this.$fields.addClass('acf-postbox seamless');
 			this.$locations.addClass('acf-postbox');
 			this.$options.addClass('acf-postbox');
-			
-			
-			// prevent validation
-			acf.validation.active = 0;
 		
 			
 			// sortable

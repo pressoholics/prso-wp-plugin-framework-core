@@ -1,16 +1,20 @@
 (function($){
 	
-	acf.ajax = {
+	acf.ajax = acf.model.extend({
+		
+		actions: {
+			'ready': 'onReady'
+		},
 		
 		o : {
-			action 			:	'acf/post/get_field_groups',
-			post_id			:	0,
-			page_template	:	0,
-			page_parent		:	0,
-			page_type		:	0,
-			post_format		:	0,
-			post_taxonomy	:	0,
-			lang			:	0,
+			action 			: 'acf/post/get_field_groups',
+			post_id			: 0,
+			page_template	: 0,
+			page_parent		: 0,
+			page_type		: 0,
+			post_format		: 0,
+			post_taxonomy	: 0,
+			lang			: 0,
 		},
 		
 		update : function( k, v ){
@@ -26,22 +30,23 @@
 			
 		},
 		
-		init : function(){
+		onReady : function(){
 			
 			// bail early if ajax is disabled
-			if( ! acf.get('ajax') )
-			{
-				return false;	
+			if( ! acf.get('ajax') ) {
+			
+				return false;
+				
 			}
 			
 			
 			// vars
-			this.update('post_id', acf.o.post_id);
+			this.update('post_id', acf.get('post_id'));
 			
 			
 			// MPML
-			if( $('#icl-als-first').length > 0 )
-			{
+			if( $('#icl-als-first').length > 0 ) {
+			
 				var href = $('#icl-als-first').children('a').attr('href'),
 					regex = new RegExp( "lang=([^&#]*)" ),
 					results = regex.exec( href );
@@ -54,6 +59,7 @@
 			
 			// add triggers
 			this.add_events();
+			
 		},
 		
 		fetch : function(){
@@ -302,26 +308,6 @@
 			*/
 			
 		}
-		
-	};
-	
-	
-	/*
-	*  Document Ready
-	*
-	*  Initialize the object
-	*
-	*  @type	function
-	*  @date	1/03/2011
-	*
-	*  @param	N/A
-	*  @return	N/A
-	*/
-	
-	$(document).ready(function(){
-		
-		// initialize
-		acf.ajax.init();
 		
 	});
 

@@ -72,7 +72,7 @@ class acf_field_taxonomy extends acf_field {
 	function ajax_query() {
 		
    		// options
-   		$options = acf_parse_args( $_GET, array(
+   		$options = acf_parse_args( $_POST, array(
 			'post_id'		=> 0,
 			's'				=> '',
 			'field_key'		=> '',
@@ -248,6 +248,10 @@ class acf_field_taxonomy extends acf_field {
 			$value[ $i ] = get_term( $value[ $i ], $taxonomy );
 			
 		}
+		
+		
+		// filter out null values
+		$value = array_filter($value);
 		
 		
 		// return

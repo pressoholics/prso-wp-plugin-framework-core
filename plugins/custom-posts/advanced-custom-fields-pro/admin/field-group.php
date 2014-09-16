@@ -215,13 +215,15 @@ class acf_admin_field_group {
 			'move_field'			=> __("Move Custom Field",'acf'),
 			'move_field_warning'	=> __("This field cannot be moved until its changes have been saved",'acf'),
 			'null'					=> __("Null",'acf'),
+			'unload'				=> __('The changes you made will be lost if you navigate away from this page','acf'),
 		));
 		
 		$o = array(
-			'post_id'				=>	$post->ID,
-			'nonce'					=>	wp_create_nonce( 'acf_nonce' ),
-			'admin_url'				=>	admin_url(),
-			'ajaxurl'				=>	admin_url( 'admin-ajax.php' )
+			'post_id'				=> $post->ID,
+			'nonce'					=> wp_create_nonce( 'acf_nonce' ),
+			'admin_url'				=> admin_url(),
+			'ajaxurl'				=> admin_url( 'admin-ajax.php' ),
+			'validation'			=> 0,
 		);
 		
 		?>

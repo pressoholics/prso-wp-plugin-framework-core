@@ -223,13 +223,14 @@ class acf_revisions {
 		
 		
 		// update value
-		$value = $field['value'];
+		//$value = $field['value'];
 		
 		
 		// default formatting
-		if( is_array($value) )
-		{
+		if( is_array($value) ) {
+			
 			$value = implode(', ', $value);
+			
 		}
 		
 		

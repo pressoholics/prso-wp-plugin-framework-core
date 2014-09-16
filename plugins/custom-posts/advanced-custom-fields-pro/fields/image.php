@@ -87,7 +87,7 @@ class acf_field_image extends acf_field {
 			'type'					=> 'hidden',
 			'name'					=> $field['name'],
 			'value'					=> $field['value'],
-			'data-name'				=> 'value-id'
+			'data-name'				=> 'id'
 		);
 		$url = '';
 		
@@ -109,13 +109,13 @@ class acf_field_image extends acf_field {
 	</div>
 	<div class="view show-if-value acf-soh">
 		<ul class="acf-hl acf-soh-target">
-			<li><a class="acf-icon dark" data-name="edit-button" href="#"><i class="acf-sprite-edit"></i></a></li>
-			<li><a class="acf-icon dark" data-name="remove-button" href="#"><i class="acf-sprite-delete"></i></a></li>
+			<li><a class="acf-icon dark" data-name="edit" href="#"><i class="acf-sprite-edit"></i></a></li>
+			<li><a class="acf-icon dark" data-name="remove" href="#"><i class="acf-sprite-delete"></i></a></li>
 		</ul>
-		<img data-name="value-url" src="<?php echo $url; ?>" alt=""/>
+		<img data-name="image" src="<?php echo $url; ?>" alt=""/>
 	</div>
 	<div class="view hide-if-value">
-		<p><?php _e('No image selected','acf'); ?> <a data-name="add-button" class="acf-button" href="#"><?php _e('Add Image','acf'); ?></a></p>
+		<p><?php _e('No image selected','acf'); ?> <a data-name="add" class="acf-button" href="#"><?php _e('Add Image','acf'); ?></a></p>
 	</div>
 </div>
 <?php

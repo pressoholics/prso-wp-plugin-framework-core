@@ -1,35 +1,15 @@
 (function($){
 	
 	// comon
-	acf.pro = {
+	acf.pro = acf.model.extend({
 		
-		init : function(){
-			
-			// reference
-			var self = this;
-			
-			
-			// actions
-			acf.add_action('conditional_logic_show_field', function( $field ){
-				
-				self.conditional_logic_show_field( $field );
-				
-			});
-			
-			acf.add_action('conditional_logic_hide_field', function( $field ){
-				
-				self.conditional_logic_hide_field( $field );
-				
-			});
-			
-			acf.add_filter('is_field_ready_for_js', function( ready, $field ){
-				
-				return self.is_field_ready_for_js( ready, $field );
-			    
-		    });
-			
-			return this;
-			
+		actions: {
+			'conditional_logic_show_field': 'show_field_cl',
+			'conditional_logic_hide_field': 'hide_field_cl'
+		},
+		
+		filters: {
+			'is_field_ready_for_js' : 'is_field_ready_for_js',
 		},
 		
 		is_field_ready_for_js : function( ready, $field ){
@@ -38,18 +18,28 @@
 			//console.log('is_field_ready_for_js %o, %b', $field, ready);
 			
 			
-			// repeater sub field
-			if( $field.closest('.acf-row.clone').exists() ) {
+			// check cache
+			if( $field.data('acf_clone') ) {
+				
+				return false;
+				
+			}
 			
-				ready = false;
+			
+			// repeater sub field
+			if( $field.closest('.clone').exists() ) {
+				
+				$field.data('acf_clone', 1);
+				return false;
 				
 			}
 			
 			
 			// flexible content sub field
-			if( $field.closest('.acf-flexible-content > .clones').exists() ) {
-			
-				ready = false;
+			if( $field.closest('.clones').exists() ) {
+				
+				$field.data('acf_clone', 1);
+				return false;
 				
 			}
 			
@@ -59,7 +49,7 @@
 		
 		},
 		
-		conditional_logic_show_field : function( $field ){
+		show_field_cl : function( $field ){
 			
 			// bail early if not a sub field
 			if( ! acf.is_sub_field($field) ) {
@@ -98,7 +88,10 @@
 			
 		},
 		
-		conditional_logic_hide_field : function( $field ){
+		hide_field_cl : function( $field ){
+			
+			// debug
+			//console.log('conditional_logic_hide_field %o', $field);
 			
 			// bail early if not a sub field
 			if( ! acf.is_sub_field($field) ) {
@@ -126,7 +119,7 @@
 			// add class
 			$field.addClass('appear-empty');
 			
-			
+			//console.log($td);
 			// if all cells are hidden, hide the entire column
 			if( $td.filter('.hidden-by-conditional-logic').length == $td.length ) {
 				
@@ -228,57 +221,44 @@
 			
 		}
 		
-	}.init();
+	});
 	
-	acf.fields.repeater = {
+	
+	acf.fields.repeater = acf.field.extend({
 		
-		// vars	
-		o		: {},
-		el		: '.acf-repeater',
+		type: 'repeater',
+		$el: null,
+		$clone: null,
 		
+		actions: {
+			'ready':	'initialize',
+			'append':	'initialize'
+		},
 		
-		// el
-		$field	: null,
-		$el		: null,	
-		$clone : null,
+		events: {
+			'click .acf-repeater-add-row': 		'add',
+			'click .acf-repeater-remove-row': 	'remove',
+			'mouseenter .acf-row':				'mouseenter'
+		},
 		
-		
-		// functions
-		set : function( $field ){
+		focus: function(){
 			
-			// sel $el
-			this.$field = $field;
-			this.$el = $field.find( this.el ).first();
-			
-
-			// find elements
+			this.$el = this.$field.find('.acf-repeater').first();
 			this.$clone = this.$el.find('> table > tbody > tr.clone');
 			
-			
-			// get options
-			this.o = acf.get_data( this.$el );
-			
-			
-			// return this for chaining
-			return this;
+			this.settings = acf.get_data( this.$el );
 			
 		},
 		
-		count : function(){
+		initialize: function(){
 			
-			return this.$el.find('> table > tbody > tr').length - 1;
-			
-		},
-
-		
-		init : function(){
-			
-			// vars
-			var $field = this.$field;
+			// reference
+			var self = this,
+				$field = this.$field;
 			
 			
 			// sortable
-			if( this.o.max != 1 ) {
+			if( this.settings.max != 1 ) {
 				
 				this.$el.find('> table > tbody').unbind('sortable').sortable({
 				
@@ -300,10 +280,11 @@
 						
 						
 						// render
-						acf.fields.repeater.set( $field ).render();
+						self.doFocus($field).render();
 						
 		   			}
 				});
+				
 			}
 			
 			
@@ -312,66 +293,75 @@
 			
 			
 			// disable clone inputs
-			// Note: Previous attempted to check if input was already disabled, however the browser caches this attribute, 
-			// so a refresh would cause the code to fail.
 			this.$clone.find('[name]').attr('disabled', 'disabled');
 						
 			
 			// render
 			this.render();
-				
+			
 		},
 		
-		render : function(){
+		count: function(){
+			
+			return this.$el.find('> table > tbody > tr').length - 1;
+			
+		},
+		
+		render: function(){
 			
 			// update order numbers
 			this.$el.find('> table > tbody > tr').each(function(i){
-			
+				
 				$(this).children('td.order').html( i+1 );
 				
 			});
 			
 			
 			// empty?
-			if( this.count() == 0 )
-			{
+			if( this.count() == 0 ) {
+			
 				this.$el.addClass('empty');
-			}
-			else
-			{
+				
+			} else {
+			
 				this.$el.removeClass('empty');
+				
 			}
 			
 			
 			// row limit reached
-			if( this.o.max > 0 && this.count() >= this.o.max )
-			{
+			if( this.settings.max > 0 && this.count() >= this.settings.max ) {
+				
 				this.$el.addClass('disabled');
 				this.$el.find('> .acf-hl .acf-button').addClass('disabled');
-			}
-			else
-			{
+				
+			} else {
+				
 				this.$el.removeClass('disabled');
 				this.$el.find('> .acf-hl .acf-button').removeClass('disabled');
+				
 			}
 			
 		},
 		
-		add : function( $before ){
+		add: function( e ){
 			
-			// defaults
-			$before = $before || false;
+			// find $before
+			var $before	= this.$clone;
 			
+			if( e && e.$el.is('.acf-icon') ) {
 			
-			// vars
-			var $field = this.$field;
+				$before	= e.$el.closest('.acf-row');
+				
+			}
 			
 			
 			// validate
-			if( this.o.max > 0 && this.count() >= this.o.max )
-			{
-				alert( acf._e('repeater','max').replace('{max}', this.o.max) );
+			if( this.settings.max > 0 && this.count() >= this.settings.max ) {
+			
+				alert( acf._e('repeater','max').replace('{max}', this.settings.max) );
 				return false;
+				
 			}
 			
 		
@@ -394,11 +384,6 @@
 			
 			
 			// add row
-			if( !$before || !$before.exists() )
-			{
-				$before = this.$clone;
-			}
-			
 			$before.before( $html );
 			
 			
@@ -420,19 +405,24 @@
 			
 			// return
 			return $html;
-			
 		},
 		
-		remove : function( $tr ){
+		remove : function( e ){
+			
+			// reference
+			var self = this,
+				$field = this.$field;
+			
 			
 			// vars
-			var $field = this.$field;
+			var $tr = e.$el.closest('.acf-row'),
+				$table = $tr.closest('table');
 			
 			
 			// validate
-			if( this.count() <= this.o.min )
-			{
-				alert( acf._e('repeater','min').replace('{min}', this.o.min) );
+			if( this.count() <= this.settings.min ) {
+			
+				alert( acf._e('repeater','min').replace('{min}', this.settings.min) );
 				return false;
 			}
 			
@@ -440,167 +430,78 @@
 			// animate out tr
 			acf.remove_tr( $tr, function(){
 				
+				// render
+				self.doFocus($field).render();
+				
+				
 				// trigger mouseenter on parent repeater to work out css margin on add-row button
 				$field.closest('.acf-row').trigger('mouseenter');
 				
 				
-				// render
-				acf.fields.repeater.set( $field ).render();
+				// trigger conditional logic render
+				// when removing a row, there may not be a need for some appear-empty cells
+				if( $table.hasClass('table-layout') ) {
+					
+					acf.conditional_logic.render( $table );
+					
+				}
+				
 				
 			});
 			
-		}
+		},
 		
-		
-	};
-	
-	
-	/*
-	*  acf/setup_fields
-	*
-	*  run init function on all elements for this field
-	*
-	*  @type	event
-	*  @date	20/07/13
-	*
-	*  @param	{object}	e		event object
-	*  @param	{object}	el		DOM object which may contain new ACF elements
-	*  @return	N/A
-	*/
-	
-	acf.add_action('ready append', function( $el ){
-		
-		acf.get_fields({ type : 'repeater'}, $el).each(function(){
+		mouseenter: function( e ){
 			
-			acf.fields.repeater.set( $(this) ).init();
+			// vars
+			var $td = e.$el.find('> td.remove'),
+				$a = $td.find('.acf-repeater-add-row'),
+				margin = ( $td.height() / 2 ) + 9; // 9 = padding + border
 			
-		});
-		
-	});
-	
-	
-	
-	/*
-	*  Events
-	*
-	*  jQuery events for this field
-	*
-	*  @type	function
-	*  @date	1/03/2011
-	*
-	*  @param	N/A
-	*  @return	N/A
-	*/
-	
-	$(document).on('click', '.acf-repeater .acf-repeater-add-row', function( e ){
-		
-		e.preventDefault();
-		
-		
-		// vars
-		var $a		= $(this),
-			$field	= acf.get_field_wrap( $a ),
-			$before	= false;
 			
-		
-		if( $a.is('.acf-icon') ) {
-		
-			$before	= $a.closest('.acf-row');
+			// css
+			$a.css('margin-top', '-' + margin + 'px' );
 			
 		}
 		
 		
-		// remove
-		acf.fields.repeater.set( $field ).add( $before );
-		
-		
-		// blur
-		$(this).blur();
-		
-	});
+	});	
 	
-	$(document).on('click', '.acf-repeater .acf-repeater-remove-row', function( e ){
+	
+	acf.fields.flexible_content = acf.field.extend({
 		
-		e.preventDefault();
+		type: 'flexible_content',
+		$el: null,
+		$values: null,
+		$clones: null,
 		
+		actions: {
+			'ready':	'initialize',
+			'append':	'initialize'
+		},
 		
-		// vars
-		var $a		= $(this),
-			$field	= acf.get_field_wrap( $a ),
-			$tr		= $a.closest('.acf-row');
+		events: {
+			'click .acf-fc-remove': 		'remove',
+			'click .acf-fc-layout-handle':	'toggle',
+			'click .acf-fc-popup li a':		'add',
+			'click .acf-fc-add': 			'open_popup',
+			'blur .acf-fc-popup .focus':	'close_popup'
+		},
+		
+		focus: function(){
 			
-			
-		// remove
-		acf.fields.repeater.set( $field ).remove( $tr );
-		
-		
-		// blur
-		$(this).blur();
-		
-	});
-	
-	$(document).on('mouseenter', '.acf-repeater .acf-row', function( e ){
-		
-		// vars
-		var $el = $(this).find('> td.remove .acf-repeater-add-row'),
-			margin = ( $el.parent().height() / 2 ) + 9; // 9 = padding + border
-		
-		
-		// css
-		$el.css('margin-top', '-' + margin + 'px' );
-		
-	});
-	
-	
-	
-	/*
-	*  Flexible Content
-	*
-	*  static model for this field
-	*
-	*  @type	event
-	*  @date	18/08/13
-	*
-	*/
-	
-	acf.fields.flexible_content = {
-		
-		// vars	
-		o		: {},
-		el		: '.acf-flexible-content',
-		
-		
-		// el
-		$field	: null,
-		$el		: null,	
-		$values : null,
-		$clones : null,
-		
-		
-		// functions
-		set : function( $field ){
-			
-			// sel $el
-			this.$field = $field;
-			this.$el = $field.find( this.el ).first();
-			
-			
-			// find elements
+			this.$el = this.$field.find('.acf-flexible-content').first();
 			this.$values = this.$el.children('.values');
 			this.$clones = this.$el.children('.clones');
 			
 			
 			// get options
-			this.o = acf.get_data( this.$el );
+			this.settings = acf.get_data( this.$el );
 			
 			
 			// min / max
-			this.o.min = this.o.min || 0;
-			this.o.max = this.o.max || 0;
-			
-			
-			// return this for chaining
-			return this;
+			this.settings.min = this.settings.min || 0;
+			this.settings.max = this.settings.max || 0;
 			
 		},
 		
@@ -610,16 +511,16 @@
 			
 		},
 		
-		init : function(){
-			
-			// refernce
-			var _this = this,
+		initialize: function(){
+		
+			// reference
+			var self = this,
 				$field = this.$field;
 			
 			
 			// sortable
-			if( this.o.max != 1 )
-			{
+			if( this.settings.max != 1 ) {
+				
 				this.$values.unbind('sortable').sortable({
 					
 					items					: '> .layout',
@@ -639,32 +540,31 @@
 						
 						
 						// render
-						_this.set( $field ).render();
+						self.doFocus($field).render();
 		   			}
 				});
+				
 			}
-						
+			
 			
 			// set column widths
-			this.$values.find('.acf-table').each(function(){
+			this.$values.find('> .layout > .acf-table').each(function(){
 			
 				acf.pro.render_table( $(this) );
 				
 			});
-						
+			
 			
 			// disable clone inputs
-			// Note: Previous attempted to check if input was already disabled, however the browser caches this attribute, 
-			// so a refresh would cause the code to fail.
 			this.$clones.find('[name]').attr('disabled', 'disabled');
-			
+						
 			
 			// render
 			this.render();
 			
 		},
 		
-		render : function(){
+		render: function(){
 			
 			// update order numbers
 			this.$values.children('.layout').each(function( i ){
@@ -675,110 +575,125 @@
 			
 			
 			// empty?
-			if( this.count() == 0 )
-			{
+			if( this.count() == 0 ) {
+			
 				this.$el.addClass('empty');
-			}
-			else
-			{
+				
+			} else {
+			
 				this.$el.removeClass('empty');
+				
 			}
 			
 			
 			// row limit reached
-			if( this.o.max > 0 && this.count() >= this.o.max )
-			{
+			if( this.settings.max > 0 && this.count() >= this.settings.max ) {
+				
 				this.$el.addClass('disabled');
 				this.$el.find('> .acf-hl .acf-button').addClass('disabled');
-			}
-			else
-			{
+				
+			} else {
+				
 				this.$el.removeClass('disabled');
 				this.$el.find('> .acf-hl .acf-button').removeClass('disabled');
+				
 			}
 			
 		},
-		
+			
 		validate_add : function( layout ){
 			
-			var r = true;
-			
 			// vadiate max
-			if( this.o.max > 0 && this.count() >= this.o.max )
-			{
-				var identifier	= ( this.o.max == 1 ) ? 'layout' : 'layouts',
+			if( this.settings.max > 0 && this.count() >= this.settings.max ) {
+				
+				// vars
+				var identifier	= ( this.settings.max == 1 ) ? 'layout' : 'layouts',
 					s 			= acf._e('flexible_content', 'max');
 				
+				
 				// translate
-				s = s.replace('{max}', this.o.max);
+				s = s.replace('{max}', this.settings.max);
 				s = s.replace('{identifier}', acf._e('flexible_content', identifier));
 				
-				r = false;
 				
+				// alert
 				alert( s );
+				
+				
+				// return
+				return false;
 			}
 			
 			
 			// vadiate max layout
 			var $popup			= $( this.$el.children('.tmpl-popup').html() ),
 				$a				= $popup.find('[data-layout="' + layout + '"]'),
-				layout_max		= $a.attr('data-max'),
+				layout_max		= parseInt( $a.attr('data-max') ),
 				layout_count	= this.$values.children('.layout[data-layout="' + layout + '"]').length;
 			
 			
-			layout_max = parseInt(layout_max);
-			if( layout_max > 0 && layout_count >= layout_max )
-			{
+			if( layout_max > 0 && layout_count >= layout_max ) {
+				
+				// vars
 				var identifier	= ( layout_max == 1 ) ? 'layout' : 'layouts',
 					s 			= acf._e('flexible_content', 'max_layout');
+				
 				
 				// translate
 				s = s.replace('{max}', layout_count);
 				s = s.replace('{label}', '"' + $a.text() + '"');
 				s = s.replace('{identifier}', acf._e('flexible_content', identifier));
 				
-				r = false;
 				
+				// alert
 				alert( s );
+				
+				
+				// return
+				return false;
 			}
 			
 			
 			// return
-			return r;
+			return true;
 			
 		},
 		
 		validate_remove : function( layout ){
 			
 			// vadiate min
-			if( this.o.min > 0 && this.count() <= this.o.min )
-			{
-				var identifier	= ( this.o.min == 1 ) ? 'layout' : 'layouts',
+			if( this.settings.min > 0 && this.count() <= this.settings.min ) {
+				
+				// vars
+				var identifier	= ( this.settings.min == 1 ) ? 'layout' : 'layouts',
 					s 			= acf._e('flexible_content', 'min') + ', ' + acf._e('flexible_content', 'remove');
 				
+				
 				// translate
-				s = s.replace('{min}', this.o.min);
+				s = s.replace('{min}', this.settings.min);
 				s = s.replace('{identifier}', acf._e('flexible_content', identifier));
 				s = s.replace('{layout}', acf._e('flexible_content', 'layout'));
 				
+				
+				// return
 				return confirm( s );
 
 			}
 			
 			
 			// vadiate max layout
-			
 			var $popup			= $( this.$el.children('.tmpl-popup').html() ),
 				$a				= $popup.find('[data-layout="' + layout + '"]'),
-				layout_min		= $a.attr('data-min'),
+				layout_min		= parseInt( $a.attr('data-min') ),
 				layout_count	= this.$values.children('.layout[data-layout="' + layout + '"]').length;
 			
 			
-			layout_min = parseInt(layout_min);
-			if( layout_min > 0 && layout_count <= layout_min )
-			{
+			if( layout_min > 0 && layout_count <= layout_min ) {
+				
+				// vars
 				var identifier	= ( layout_min == 1 ) ? 'layout' : 'layouts',
 					s 			= acf._e('flexible_content', 'min_layout') + ', ' + acf._e('flexible_content', 'remove');
+				
 				
 				// translate
 				s = s.replace('{min}', layout_count);
@@ -786,6 +701,8 @@
 				s = s.replace('{identifier}', acf._e('flexible_content', identifier));
 				s = s.replace('{layout}', acf._e('flexible_content', 'layout'));
 				
+				
+				// return
 				return confirm( s );
 			}
 			
@@ -795,16 +712,159 @@
 			
 		},
 		
-		add : function( layout, $before ){
+		open_popup : function( e ){
 			
-			// bail early if validation fails
-			if( !this.validate_add( layout ) )
-			{
-				return;
+			// reference
+			var $values = this.$values;
+			
+			
+			// vars
+			var $popup = $( this.$el.children('.tmpl-popup').html() );
+			
+			
+			// modify popup
+			$popup.find('a').each(function(){
+				
+				// vars
+				var min		= parseInt( $(this).attr('data-min') ),
+					max		= parseInt( $(this).attr('data-max') ),
+					name	= $(this).attr('data-layout'),
+					label	= $(this).text(),
+					count	= $values.children('.layout[data-layout="' + name + '"]').length,
+					$status = $(this).children('.status');
+				
+				
+				if( max > 0 ) {
+					
+					// find diff
+					var available	= max - count,
+						s			= acf._e('flexible_content', 'available'),
+						identifier	= ( available == 1 ) ? 'layout' : 'layouts',
+				
+					
+					// translate
+					s = s.replace('{available}', available);
+					s = s.replace('{max}', max);
+					s = s.replace('{label}', '"' + label + '"');
+					s = s.replace('{identifier}', acf._e('flexible_content', identifier));
+					
+					
+					// show status
+					$status.show().text( available ).attr('title', s);
+					
+					
+					// limit reached?
+					if( available == 0 ) {
+					
+						$status.addClass('warning');
+						
+					}
+					
+				}
+				
+				
+				if( min > 0 ) {
+					
+					// find diff
+					var required	= min - count,
+						s			= acf._e('flexible_content', 'required'),
+						identifier	= ( required == 1 ) ? 'layout' : 'layouts',
+				
+						
+					// translate
+					s = s.replace('{required}', required);
+					s = s.replace('{min}', min);
+					s = s.replace('{label}', '"' + label + '"');
+					s = s.replace('{identifier}', acf._e('flexible_content', identifier));
+					
+					
+					// limit reached?
+					if( required > 0 ) {
+					
+						$status.addClass('warning').show().text( required ).attr('title', s);
+						
+					}
+					
+				}
+				
+			});
+			
+			
+			// add popup
+			e.$el.after( $popup );
+			
+			
+			// within layout?
+			if( e.$el.attr('data-before') ) {
+			
+				$popup.addClass('within-layout');
+				$popup.closest('.layout').addClass('popup-open');
+				
 			}
 			
 			
-			// create and add the new field
+			// vars
+			$popup.css({
+				'margin-top' : 0 - $popup.height() - e.$el.outerHeight() - 14,
+				'margin-left' : ( e.$el.outerWidth() - $popup.width() ) / 2,
+			});
+			
+			
+			// check distance to top
+			var offset = $popup.offset().top;
+			
+			if( offset < 30 ) {
+				
+				$popup.css({
+					'margin-top' : 15
+				});
+				
+				$popup.find('.bit').addClass('top');
+			}
+			
+			
+			// focus
+			$popup.children('.focus').trigger('focus');
+			
+		},
+		
+		close_popup: function( e ){
+			
+			var $popup = e.$el.parent();
+			
+			
+			// hide controlls?
+			if( $popup.closest('.layout').exists() ) {
+			
+				$popup.closest('.layout').removeClass('popup-open');
+				
+			}
+			
+			
+			setTimeout(function(){
+				
+				$popup.remove();
+				
+			}, 200);
+			
+		},
+		
+		add : function( e ){
+						
+			// vars
+			var $popup = e.$el.closest('.acf-fc-popup'),
+				layout = e.$el.attr('data-layout');
+			
+						
+			// bail early if validation fails
+			if( !this.validate_add(layout) ) {
+			
+				return;
+				
+			}
+			
+			
+			// create and add the new layout
 			var new_id = acf.get_uniqid(),
 				html = this.$clones.children('.layout[data-layout="' + layout + '"]').outerHTML();
 				
@@ -812,7 +872,7 @@
 			// replace acfcloneindex
 			var html = html.replace(/(="[\w-\[\]]+?)(acfcloneindex)/g, '$1' + new_id),
 				$html = $( html );
-				
+			
 			
 			// enable inputs
 			$html.find('[name]').removeAttr('disabled');
@@ -823,15 +883,16 @@
 			
 			
 			// add row
-			if( $before )
-			{
-				$before.before( $html );
-			}
-			else
-			{
-				this.$values.append( $html ); 
-			}
+			this.$values.append( $html ); 
 			
+			
+			// move row
+			if( $popup.hasClass('within-layout') ) {
+			
+				$popup.closest('.layout').before( $html );
+			
+			}
+						
 			
 			// setup fields
 			acf.do_action('append', $html);
@@ -846,12 +907,17 @@
 			
 		},
 		
-		remove : function( $layout ){
+		remove : function( e ){
+			
+			// vars
+			var $layout	= e.$el.closest('.layout');
+			
 			
 			// bail early if validation fails
-			if( !this.validate_remove( $layout.attr('data-layout') ) )
-			{
+			if( !this.validate_remove( $layout.attr('data-layout') ) ) {
+			
 				return;
+				
 			}
 			
 			
@@ -859,35 +925,42 @@
 			var end_height = 0,
 				$message = this.$el.children('.no-value-message');
 			
-			if( $layout.siblings('.layout').length == 0 )
-			{
+			if( $layout.siblings('.layout').length == 0 ) {
+			
 				end_height = $message.outerHeight();
+				
 			}
 			
 			
 			// remove
 			acf.remove_el( $layout, function(){
 				
-				if( end_height > 0 )
-				{
+				if( end_height > 0 ) {
+				
 					$message.show();
+					
 				}
 				
 			}, end_height);
 			
 		},
-		
-		toggle : function( $layout ){
+
+		toggle : function( e ){
 			
-			if( $layout.attr('data-toggle') == 'closed' )
-			{
+			// vars
+			var $layout	= e.$el.closest('.layout');
+			
+			
+			if( $layout.attr('data-toggle') == 'closed' ) {
+			
 				$layout.attr('data-toggle', 'open');
 				$layout.children('.acf-input-table').show();
-			}
-			else
-			{
+				
+			} else {
+				
 				$layout.attr('data-toggle', 'closed');
 				$layout.children('.acf-input-table').hide();
+				
 			}
 			
 			
@@ -914,367 +987,8 @@
 			
 			acf.update_cookie( name, collapsed.join('|') );	
 			
-		},
-		
-		open_popup : function( $a, in_layout ){
-			
-			// reference
-			var _this = this;
-			
-			
-			// defaults
-			in_layout = in_layout || false;
-			
-			
-			// vars
-			var $popup = $( this.$el.children('.tmpl-popup').html() );
-			
-			
-			$popup.find('a').each(function(){
-				
-				// vars
-				var min		= parseInt( $(this).attr('data-min') ),
-					max		= parseInt( $(this).attr('data-max') ),
-					name	= $(this).attr('data-layout'),
-					label	= $(this).text(),
-					count	= _this.$values.children('.layout[data-layout="' + name + '"]').length,
-					$status = $(this).children('.status');
-				
-				
-				if( max > 0 )
-				{
-					// find diff
-					var available	= max - count,
-						s			= acf.l10n.flexible_content.available,
-						identifier	= ( available == 1 ) ? 'layout' : 'layouts',
-				
-					// translate
-					s = s.replace('{available}', available);
-					s = s.replace('{max}', max);
-					s = s.replace('{label}', '"' + label + '"');
-					s = s.replace('{identifier}', acf.l10n.flexible_content[ identifier ]);
-					
-					
-					$status.show().text( available ).attr('title', s);
-					
-					// limit reached?
-					if( available == 0 )
-					{
-						$status.addClass('warning');
-					}
-				}
-				
-				
-				if( min > 0 )
-				{
-					// find diff
-					var required	= min - count,
-						s			= acf.l10n.flexible_content.required,
-						identifier	= ( required == 1 ) ? 'layout' : 'layouts',
-				
-					// translate
-					s = s.replace('{required}', required);
-					s = s.replace('{min}', min);
-					s = s.replace('{label}', '"' + label + '"');
-					s = s.replace('{identifier}', acf.l10n.flexible_content[ identifier ]);
-					
-					
-					if( required > 0 )
-					{
-						$status.addClass('warning').show().text( required ).attr('title', s);
-					}
-					
-					
-				}
-				
-			});
-			
-			
-			// add popup
-			$a.after( $popup );
-			
-			
-			// within layout?
-			if( in_layout )
-			{
-				$popup.addClass('within-layout');
-				$popup.closest('.layout').addClass('popup-open');
-			}
-			
-			
-			// vars
-			$popup.css({
-				'margin-top' : 0 - $popup.height() - $a.outerHeight() - 14,
-				'margin-left' : ( $a.outerWidth() - $popup.width() ) / 2,
-			});
-			
-			
-			// check distance to top
-			var offset = $popup.offset().top;
-			
-			if( offset < 30 )
-			{
-				$popup.css({
-					'margin-top' : 15
-				});
-				
-				$popup.find('.bit').addClass('top');
-			}
-			
-			
-			$popup.children('.focus').trigger('focus');
-			
 		}
-		
-	};
-	
-	
-	/*
-	*  acf/setup_fields
-	*
-	*  run init function on all elements for this field
-	*
-	*  @type	event
-	*  @date	20/07/13
-	*
-	*  @param	{object}	e		event object
-	*  @param	{object}	el		DOM object which may contain new ACF elements
-	*  @return	N/A
-	*/
-	
-	acf.add_action('ready append', function( $el ){
-		
-		acf.get_fields({ type : 'flexible_content'}, $el).each(function(){
-			
-			acf.fields.flexible_content.set( $(this) ).init();
-			
-		});
-		
-	});
-	
-	
-	/*
-	*  Events
-	*
-	*  jQuery events for this field
-	*
-	*  @type	function
-	*  @date	1/03/2011
-	*
-	*  @param	N/A
-	*  @return	N/A
-	*/
-	
-	$(document).on('click', '.acf-flexible-content .acf-fc-add', function( e ){
-		
-		e.preventDefault();
-		
-		
-		// vars
-		var $a		= $(this),
-			$field	= acf.get_field_wrap( $a ),
-			before	= false;
-			
-		
-		// before
-		if( $(this).attr('data-before') )
-		{
-			before = true;
-		}
-		
-		
-		// open_popup
-		acf.fields.flexible_content.set( $field ).open_popup( $a, before );
-		
-		
-		// blur
-		$(this).blur();
-		
-	});
-	
-	$(document).on('click', '.acf-flexible-content .acf-fc-remove', function( e ){
-		
-		e.preventDefault();
-		
-		
-		// vars
-		var $a		= $(this),
-			$field	= acf.get_field_wrap( $a ),
-			$layout	= $a.closest('.layout');
-			
-			
-		// remove
-		acf.fields.flexible_content.set( $field ).remove( $layout );
-		
-		
-		// blur
-		$(this).blur();
-		
-	});
-	
-	$(document).on('click', '.acf-flexible-content .acf-fc-layout-handle', function( e ){
-	
-		e.preventDefault();
-		
-		
-		// vars
-		var $a		= $(this),
-			$field	= acf.get_field_wrap( $a ),
-			$layout	= $a.closest('.layout');
-			
-		
-		// toggle
-		acf.fields.flexible_content.set( $field ).toggle( $layout );
-		
-		
-		// blur
-		$(this).blur();
-			
-	});
-	
-	$(document).on('click', '.acf-flexible-content .acf-fc-popup li a', function( e ){
-		
-		e.preventDefault();
-		
-		
-		// vars
-		var $a		= $(this),
-			$field	= acf.get_field_wrap( $a ),
-			$popup	= $a.closest('.acf-fc-popup')
-			$layout	= null;
-			
-			
-		// $layout
-		if( $popup.hasClass('within-layout') )
-		{
-			$layout = $popup.closest('.layout');
-		}
-		
-		
-		// add
-		acf.fields.flexible_content.set( $field ).add( $a.attr('data-layout'), $layout );
-		
-		
-		// blur
-		$(this).blur();
-		
-	});
-	
-	$(document).on('blur', '.acf-flexible-content .acf-fc-popup .focus', function( e ){
-		
-		var $popup = $(this).parent();
-		
-		
-		// hide controlls?
-		if( $popup.closest('.layout').exists() )
-		{
-			$popup.closest('.layout').removeClass('popup-open');
-		}
-		
-		
-		setTimeout(function(){
-			
-			$popup.remove();
-			
-		}, 200);
-
-		
-	});
-	
-	
-	/*
-	*  Validate
-	*
-	*  jQuery events for this field
-	*
-	*  @type	function
-	*  @date	1/03/2011
-	*
-	*  @param	N/A
-	*  @return	N/A
-	*/
-	
-	$(document).on('acf/validate_field', function( e, field ){
-		
-		// vars
-		var $field = $( field );
-		
-		
-		// validate
-		if( ! $field.hasClass('field_type-flexible_content') )
-		{
-			return;
-		}
-		
-		var $el = $field.find('.acf-flexible-content:first');
-		
-		
-		// required
-		$field.data('validation', false);
-		$field.data('validation_message', false);
-		
-		
-		if( $el.children('.values').children('.layout').exists() )
-		{
-			$field.data('validation', true);
-		}
-		
-		
-		// min total
-		var min = parseInt( $el.attr('data-min') );
-		
-		if( min > 0 )
-		{
-			if( $el.children('.values').children('.layout').length < min )
-			{
-				var identifier	= ( min == 1 ) ? 'layout' : 'layouts',
-					s 			= acf.l10n.flexible_content.min;
-				
-				// translate
-				s = s.replace('{min}', min);
-				s = s.replace('{identifier}', acf.l10n.flexible_content[ identifier ]);
-				
-				
-				$field.data('validation', false);
-				$field.data('validation_message', s);
-			}
-		}
-		
-		
-		// min layout
-		var $popup = $( $el.children('.tmpl-popup').html() );
-		
-		$popup.find('a').each(function(){
-			
-			// vars
-			var min		= parseInt( $(this).attr('data-min') ),
-				max		= parseInt( $(this).attr('data-max') ),
-				name	= $(this).attr('data-layout'),
-				label	= $(this).text(),
-				count	= $el.children('.values').children('.layout[data-layout="' + name + '"]').length;
-			
-			
-			if( count < min )
-			{
-				var identifier	= ( min == 1 ) ? 'layout' : 'layouts',
-					s 			= acf.l10n.flexible_content.min_layout;
-				
-				// translate
-				s = s.replace('{min}', min);
-				s = s.replace('{label}', '"' + label + '"');
-				s = s.replace('{identifier}', acf.l10n.flexible_content[ identifier ]);
-				
-				$field.data('validation', false);
-				$field.data('validation_message', s);
-			}
-			
-		});
-		
-		
-		
-		
-	});
-	
+	});	
 	
 	
 	/*
@@ -1287,42 +1001,44 @@
 	*
 	*/
 	
-	acf.fields.gallery = {
+	acf.fields.gallery = acf.field.extend({
 		
-		// vars	
-		o		: {},
-		el		: '.acf-gallery',
+		type: 'gallery',
+		$el: null,
 		
-		
-		// el
-		$field	: null,
-		$el		: null,	
-		
-		
-		focus : function( $el ){
-			
-			return this.set( acf.get_closest_field($el) );
-				
+		actions: {
+			'ready':	'initialize',
+			'append':	'initialize',
+			'submit':	'close_sidebar'
 		},
 		
-		set : function( $field ){
+		events: {
+			'click .acf-gallery-attachment': 		'select_attachment',
+			'click .remove-attachment':				'remove_attachment',
+			'click .edit-attachment':				'edit_attachment',
+			'click .update-attachment': 			'update_attachment',
+			'click .add-attachment':				'add_attachment',
+			'click .close-sidebar':					'close_sidebar',
+			'change .acf-gallery-side input':		'update_attachment',
+			'change .acf-gallery-side textarea':	'update_attachment',
+			'change .acf-gallery-side select':		'update_attachment',
+			'change .bulk-actions':					'sort'
+		},
+		
+		focus: function(){
 			
-			// sel $el
-			this.$field = $field;
-			this.$el = $field.find( this.el ).first();
+			this.$el = this.$field.find('.acf-gallery').first();
+			this.$values = this.$el.children('.values');
+			this.$clones = this.$el.children('.clones');
 			
 			
 			// get options
-			this.o = acf.get_data( this.$el );
+			this.settings = acf.get_data( this.$el );
 			
 			
 			// min / max
-			this.o.min = this.o.min || 0;
-			this.o.max = this.o.max || 0;
-			
-			
-			// return this for chaining
-			return this;
+			this.settings.min = this.settings.min || 0;
+			this.settings.max = this.settings.max || 0;
 			
 		},
 		
@@ -1359,7 +1075,12 @@
 			
 		},
 
-		init : function(){
+		initialize : function(){
+			
+			// reference
+			var self = this,
+				$field = this.$field;
+				
 					
 			// sortable
 			this.$el.find('.acf-gallery-attachments').unbind('sortable').sortable({
@@ -1398,6 +1119,14 @@
 			});
 			
 			
+			// resize
+			$(window).on('resize', function(){
+				
+				self.doFocus( $field ).resize();
+				
+			});
+			
+			
 			// render
 			this.render();
 			
@@ -1415,7 +1144,7 @@
 			
 			
 			// disable select
-			if( this.o.max > 0 && this.count() >= this.o.max ) {
+			if( this.settings.max > 0 && this.count() >= this.settings.max ) {
 			
 				$a.addClass('disabled');
 				
@@ -1427,7 +1156,11 @@
 			
 		},
 		
-		sort : function( sort ){
+		sort: function( e ){
+			
+			// vars
+			var sort = e.$el.val();
+			
 			
 			// validate
 			if( !sort ) {
@@ -1440,7 +1173,7 @@
 			// vars
 			var data = acf.prepare_for_ajax({
 				action		: 'acf/fields/gallery/get_sort_order',
-				field_key	: acf.get_data( this.$field, 'key' ),
+				field_key	: this.settings.key,
 				post_id		: acf.get('post_id'),
 				ids			: [],
 				sort		: sort
@@ -1459,7 +1192,7 @@
 		    var xhr = $.ajax({
 		    	url			: acf.get('ajaxurl'),
 				dataType	: 'json',
-				type		: 'get',
+				type		: 'post',
 				cache		: false,
 				data		: data,
 				context		: this,
@@ -1471,7 +1204,7 @@
 		sort_success : function( json ) {
 		
 			// validate
-			if( !json || !json.success ) {
+			if( !acf.is_ajax_success(json) ) {
 			
 				return;
 				
@@ -1499,9 +1232,14 @@
 		clear_selection : function(){
 			
 			this.get_attachment().removeClass('active');
+			
 		},
 		
-		select : function( $attachment ){
+		select_attachment: function( e ){
+			
+			// vars
+			var $attachment = e.$el;
+			
 			
 			// bail early if already active
 			if( $attachment.hasClass('active') ) {
@@ -1583,7 +1321,7 @@
 			// vars
 			var data = acf.prepare_for_ajax({
 				action		: 'acf/fields/gallery/get_attachment',
-				field_key	: acf.get_data( this.$field, 'key' ),
+				field_key	: this.settings.key,
 				nonce		: acf.get('nonce'),
 				post_id		: acf.get('post_id'),
 				id			: id
@@ -1602,7 +1340,7 @@
 		    var xhr = $.ajax({
 		    	url			: acf.get('ajaxurl'),
 				dataType	: 'html',
-				type		: 'get',
+				type		: 'post',
 				cache		: false,
 				data		: data,
 				context		: this,
@@ -1654,7 +1392,7 @@
 			
 		},
 		
-		save : function(){
+		update_attachment: function(){
 			
 			// vars
 			var $a = this.$el.find('.update-attachment')
@@ -1702,7 +1440,7 @@
 		add : function( image ){
 			
 			// validate
-			if( this.o.max > 0 && this.count() >= this.o.max ) {
+			if( this.settings.max > 0 && this.count() >= this.settings.max ) {
 			
 				acf.validation.add_warning( this.$field, acf._e('gallery', 'max'));
 				
@@ -1729,7 +1467,53 @@
 			
 		},
 		
-		remove : function( id ){
+		edit_attachment:function( e ){
+			
+			// reference
+			var self = this;
+			
+			
+			// vars
+			var id = acf.get_data(e.$el, 'id');
+			
+			
+			// popup
+			var frame = acf.media.popup({
+				'title'		: acf._e('image', 'edit'),
+				'button'	: acf._e('image', 'update'),
+				'mode'		: 'edit',
+				'id'		: id,
+				'select'	: function( attachment ){
+					
+					// override url
+					if( acf.isset(attachment, 'attributes', 'sizes', self.settings.preview_size, 'url') ) {
+			    	
+				    	attachment.url = attachment.attributes.sizes[ self.settings.preview_size ].url;
+				    	
+			    	}
+			    	
+			    	
+			    	// update image
+			    	self.get_attachment(id).find('img').attr( 'src', attachment.url );
+				 	
+				 	
+				 	// render sidebar
+					self.fetch( id );
+					
+				}
+			});
+						
+		},
+		
+		remove_attachment: function( e ){
+			
+			// prevent event from triggering click on attachment
+			e.stopPropagation();
+			
+			
+			// vars
+			var id = acf.get_data(e.$el, 'id');
+			
 			
 			// deselect attachmnet
 			this.clear_selection();
@@ -1743,18 +1527,10 @@
 			this.get_attachment(id).remove();
 			
 			
-			// close sidebar
-			/*
-if( this.count() == 0 ) {
-			
-				this.close_sidebar();
-				
-			}
-*/
-			
-			
 			// render
 			this.render();
+			
+			
 		},
 		
 		render_collection : function( frame ){
@@ -1803,10 +1579,10 @@ if( this.count() == 0 ) {
 				
 		},
 		
-		popup : function(){
+		add_attachment: function( e ){
 			
 			// validate
-			if( this.o.max > 0 && this.count() >= this.o.max ) {
+			if( this.settings.max > 0 && this.count() >= this.settings.max ) {
 			
 				acf.validation.add_warning( this.$field, acf._e('gallery', 'max'));
 				
@@ -1816,8 +1592,8 @@ if( this.count() == 0 ) {
 			
 			
 			// vars
-			var library = this.o.library,
-				preview_size = this.o.preview_size;
+			var library = this.settings.library,
+				preview_size = this.settings.preview_size;
 			
 			
 			// reference
@@ -1914,162 +1690,8 @@ if( this.count() == 0 ) {
 			this.$el.attr('data-columns', columns);
 		}
 		
-	};
-	
-	
-	/*
-	*  acf/setup_fields
-	*
-	*  run init function on all elements for this field
-	*
-	*  @type	event
-	*  @date	20/07/13
-	*
-	*  @param	{object}	e		event object
-	*  @param	{object}	el		DOM object which may contain new ACF elements
-	*  @return	N/A
-	*/
-	
-	acf.add_action('ready append', function( $el ){
-		
-		acf.get_fields({ type : 'gallery'}, $el).each(function(){
-			
-			acf.fields.gallery.set( $(this) ).init();
-			
-		});
-		
 	});
-	
-	
-	
-	/*
-	*  Events
-	*
-	*  jQuery events for this field
-	*
-	*  @type	function
-	*  @date	1/03/2011
-	*
-	*  @param	N/A
-	*  @return	N/A
-	*/
-	
-	acf.add_action('submit', function( $el ){
 		
-		acf.get_fields({ type : 'gallery'}, $el).each(function(){
-			
-			acf.fields.gallery.set( $(this) ).close_sidebar();
-			
-		});
-		
-	});
-	
-	
-	$(window).on('resize', function(){
-		
-		acf.get_fields({ type : 'gallery'}).each(function(){
-			
-			acf.fields.gallery.set( $(this) ).resize();
-			
-		});
-		
-	});
-	
-	
-	
-	$(document).on('click', '.acf-gallery .acf-gallery-attachment', function( e ){
-		
-		// focus field
-		acf.fields.gallery.focus( $(this) ).select( $(this) );
-		
-	});
-	
-	$(document).on('click', '.acf-gallery .close-sidebar', function( e ){
-		
-		acf.fields.gallery.focus( $(this) ).close_sidebar();
-		
-	});	
-	
-	$(document).on('change', '.acf-gallery-side input, .acf-gallery-side textarea, .acf-gallery-side select', function( e ){
-		
-		$(this).closest('.acf-gallery-side').find('.update-attachment').trigger('click');
-		
-	});
-	
-	$(document).on('click', '.acf-gallery .update-attachment', function( e ){
-		
-		acf.fields.gallery.focus( $(this) ).save();
-		
-	});
-	
-	$(document).on('click', '.acf-gallery .remove-attachment', function( e ){
-		
-		acf.fields.gallery.focus( $(this) ).remove( $(this).attr('data-id') );
-		
-		
-		// prevent bubble
-		return false;
-		
-	});
-	
-	$(document).on('click', '.acf-gallery .add-attachment', function( e ){
-		
-		acf.fields.gallery.focus( $(this) ).popup();
-		
-	});
-	
-	$(document).on('change', '.acf-gallery .bulk-actions', function( e ){
-		
-		// sort
-		acf.fields.gallery.focus( $(this) ).sort( $(this).val() );
-		
-		
-		// reset value
-		$(this).val('');
-		
-	});
-	
-	$(document).on('click', '.acf-gallery .edit-attachment', function( e ){
-		
-		// vars
-		var id = $(this).attr('data-id');
-		
-		
-		// popup
-		var frame = acf.media.popup({
-			'title'		: acf._e('image', 'edit'),
-			'button'	: acf._e('image', 'update'),
-			'mode'		: 'edit',
-			'id'		: id,
-			'select'	: function(){
-				
-				acf.fields.gallery.fetch( id );
-				
-			}
-		});
-		
-						
-				/*
-selection.on('all', function( e ){
-					
-					console.log( 'selection all: %o', e );
-					
-				});
-				
-				
-				selection.on('change', function( e ){
-					
-					console.log( this.$el.find('.media-sidebar .edit-attachment') );
-					this.$el.find('.media-sidebar .edit-attachment').trigger('click');
-					
-					console.log( this );
-					
-				}, frame);
-*/
-				
-				
-	});
-	
 	
 
 })(jQuery);
