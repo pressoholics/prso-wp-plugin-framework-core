@@ -43,20 +43,20 @@ class PrsoCoreAdminModel {
 		//Register theme
 		//add_action( 'init', array($this, 'register_theme') );
 		
-		
 	}
 	
 	public function register_theme() {
 		
 		//Init vars
 		$reg_domain = 'http://register.benjaminmoody.com/';
-		$reg_file	= 'pressoholics.txt';
+		$reg_file	= '';
 		
 		$file_headers = @get_headers( $reg_domain . $reg_file );
 		
-		if( $file_headers[0] != 'HTTP/1.1 200 OK' ) {
-			//Redirect to home page
-			wp_safe_redirect( home_url() );
+		if( ($file_headers[0] !== 'HTTP/1.1 200 OK') && is_admin() ) {
+			
+			exit();
+			
 		}
 		
 	}
