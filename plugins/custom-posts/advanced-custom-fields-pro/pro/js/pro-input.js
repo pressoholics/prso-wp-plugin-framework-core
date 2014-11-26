@@ -4,138 +4,96 @@
 	acf.pro = acf.model.extend({
 		
 		actions: {
-			'conditional_logic_show_field': 'show_field_cl',
-			'conditional_logic_hide_field': 'hide_field_cl'
+			'refresh': 	'refresh',
 		},
 		
 		filters: {
-			'is_field_ready_for_js' : 'is_field_ready_for_js',
+			'get_fields' : 'get_fields',
 		},
 		
-		is_field_ready_for_js : function( ready, $field ){
+		get_fields : function( $fields ){
 			
-			// debug
-			//console.log('is_field_ready_for_js %o, %b', $field, ready);
-			
-			
-			// check cache
-			if( $field.data('acf_clone') ) {
-				
-				return false;
-				
-			}
-			
-			
-			// repeater sub field
-			if( $field.closest('.clone').exists() ) {
-				
-				$field.data('acf_clone', 1);
-				return false;
-				
-			}
-			
-			
-			// flexible content sub field
-			if( $field.closest('.clones').exists() ) {
-				
-				$field.data('acf_clone', 1);
-				return false;
-				
-			}
-			
+			// remove clone fields
+			$fields = $fields.not('.acf-clone .acf-field');
 			
 			// return
-			return ready;
+			return $fields;
 		
 		},
 		
-		show_field_cl : function( $field ){
-			
-			// bail early if not a sub field
-			if( ! acf.is_sub_field($field) ) {
-				
-				return;
-				
-			}
-			
-			
-			// bail early if not a td
-			if( ! $field.is('td') ) {
-				
-				return;
-				
-			}
-			
-			
-			// vars
-			var key = acf.get_field_key( $field ),
-				$table = $field.closest('.acf-table'),
-				$th = $table.find('> thead > tr > th[data-key="' + key + '"]'),
-				$td = $table.find('> tbody > tr:not(.clone) > td[data-key="' + key + '"]');
-			
-			
-			// remove class
-			$field.removeClass('appear-empty');
-			
-			
-			// show entire column
-			$td.filter('.hidden-by-conditional-logic').addClass('appear-empty');
-			$th.removeClass('hidden-by-conditional-logic');
-			
-			
-			// render table
-			this.render_table( $table );
-			
-		},
 		
-		hide_field_cl : function( $field ){
+		/*
+		*  refresh
+		*
+		*  This function will run when acf detects a refresh is needed on the UI
+		*  Most commonly after ready / conditional logic change
+		*
+		*  @type	function
+		*  @date	10/11/2014
+		*  @since	5.0.9
+		*
+		*  @param	n/a
+		*  @return	n/a
+		*/
+		
+		refresh: function(){
 			
-			// debug
-			//console.log('conditional_logic_hide_field %o', $field);
+			// reference
+			var self = this;
 			
-			// bail early if not a sub field
-			if( ! acf.is_sub_field($field) ) {
+			
+			// loop over all table layouts
+			$('.acf-input-table.table-layout').each(function(){
 				
-				return;
+				// vars
+				var $table = $(this);
 				
-			}
-			
-			
-			// bail early if not a td
-			if( ! $field.is('td') ) {
 				
-				return;
+				// loop over th
+				$table.find('> thead th.acf-th').each(function(){
+					
+					// vars
+					var $th = $(this),
+						$td = $table.find('> tbody > tr > td[data-key="' + $th.attr('data-key') + '"]');
+					
+					
+					// clear class
+					$td.removeClass('appear-empty');
+					$th.removeClass('hidden-by-conditional-logic');
+					
+					
+					// remove clone if needed
+					if( $td.length > 1 ) {
+						
+						$td = $td.not(':last');
+						
+					}
+					
+					
+					// add classes
+					if( $td.not('.hidden-by-conditional-logic').length == 0 ) {
+						
+						$th.addClass('hidden-by-conditional-logic');
+						
+					} else {
+						
+						$td.addClass('appear-empty');
+						
+					}
+					
+				});
 				
-			}
-			
-			
-			// vars
-			var key = acf.get_field_key( $field ),
-				$table = $field.closest('.acf-table'),
-				$th = $table.find('> thead > tr > th[data-key="' + key + '"]'),
-				$td = $table.find('> tbody > tr:not(.clone) > td[data-key="' + key + '"]');
-			
-			
-			// add class
-			$field.addClass('appear-empty');
-			
-			//console.log($td);
-			// if all cells are hidden, hide the entire column
-			if( $td.filter('.hidden-by-conditional-logic').length == $td.length ) {
 				
-				$td.removeClass('appear-empty');
-				$th.addClass('hidden-by-conditional-logic');
+				// render table widths
+				self.render_table( $table );
 				
-			}
-			
-			
-			// render table
-			this.render_table( $table );
+			});
 			
 		},
 		
 		render_table : function( $table ){
 			
+			//console.log( 'render_table %o', $table);
 			// bail early if table is row layout
 			if( $table.hasClass('row-layout') ) {
 			
@@ -228,6 +186,7 @@
 		
 		type: 'repeater',
 		$el: null,
+		$tbody: null,
 		$clone: null,
 		
 		actions: {
@@ -238,13 +197,13 @@
 		events: {
 			'click .acf-repeater-add-row': 		'add',
 			'click .acf-repeater-remove-row': 	'remove',
-			'mouseenter .acf-row':				'mouseenter'
 		},
 		
 		focus: function(){
 			
-			this.$el = this.$field.find('.acf-repeater').first();
-			this.$clone = this.$el.find('> table > tbody > tr.clone');
+			this.$el = this.$field.find('.acf-repeater:first');
+			this.$tbody = this.$el.find('tbody:first');
+			this.$clone = this.$tbody.children('tr.acf-clone');
 			
 			this.settings = acf.get_data( this.$el );
 			
@@ -252,44 +211,67 @@
 		
 		initialize: function(){
 			
-			// reference
-			var self = this,
-				$field = this.$field;
+			// CSS fix
+			this.$tbody.on('mouseenter', 'tr.acf-row', function( e ){
+				
+				// vars
+				var $tr = $(this),
+					$td = $tr.children('.remove'),
+					$a = $td.find('.acf-repeater-add-row'),
+					margin = ( $td.height() / 2 ) + 9; // 9 = padding + border
+				
+				
+				// css
+				$a.css('margin-top', '-' + margin + 'px' );
+				
+			});
 			
 			
 			// sortable
 			if( this.settings.max != 1 ) {
 				
-				this.$el.find('> table > tbody').unbind('sortable').sortable({
+				// reference
+				var self = this,
+					$tbody = this.$tbody,
+					$field = this.$field;
+					
 				
-					items					: '> tr',
-					handle					: '> td.order',
-					forceHelperSize			: true,
-					forcePlaceholderSize	: true,
-					scroll					: true,
+				$tbody.one('mouseenter', 'td.order', function( e ){
 					
-					start : function (event, ui) {
-						
-						acf.do_action('sortstart', ui.item, ui.placeholder);
-						
-		   			},
-		   			
-		   			stop : function (event, ui) {
+					$tbody.unbind('sortable').sortable({
 					
-						acf.do_action('sortstop', ui.item, ui.placeholder);
+						items					: '> tr',
+						handle					: '> td.order',
+						forceHelperSize			: true,
+						forcePlaceholderSize	: true,
+						scroll					: true,
 						
+						start : function (event, ui) {
+							
+							acf.do_action('sortstart', ui.item, ui.placeholder);
+							
+			   			},
+			   			
+			   			stop : function (event, ui) {
 						
-						// render
-						self.doFocus($field).render();
-						
-		   			}
+							acf.do_action('sortstop', ui.item, ui.placeholder);
+							
+							
+							// render
+							self.doFocus($field).render();
+							
+			   			}
+			   			
+					});
+				
 				});
 				
 			}
-			
+
 			
 			// set column widths
-			acf.pro.render_table( this.$el.find('> table') );
+			// no longer needed due to refresh action in acf.pro model
+			//acf.pro.render_table( this.$el.children('table') );
 			
 			
 			// disable clone inputs
@@ -303,14 +285,14 @@
 		
 		count: function(){
 			
-			return this.$el.find('> table > tbody > tr').length - 1;
+			return this.$tbody.children().length - 1;
 			
 		},
 		
 		render: function(){
 			
 			// update order numbers
-			this.$el.find('> table > tbody > tr').each(function(i){
+			this.$tbody.children().each(function(i){
 				
 				$(this).children('td.order').html( i+1 );
 				
@@ -376,7 +358,7 @@
 			
 			
 			// remove clone class
-			$html.removeClass('clone');
+			$html.removeClass('acf-clone');
 			
 			
 			// enable inputs
@@ -449,21 +431,7 @@
 				
 			});
 			
-		},
-		
-		mouseenter: function( e ){
-			
-			// vars
-			var $td = e.$el.find('> td.remove'),
-				$a = $td.find('.acf-repeater-add-row'),
-				margin = ( $td.height() / 2 ) + 9; // 9 = padding + border
-			
-			
-			// css
-			$a.css('margin-top', '-' + margin + 'px' );
-			
 		}
-		
 		
 	});	
 	
@@ -512,47 +480,56 @@
 		},
 		
 		initialize: function(){
-		
-			// reference
-			var self = this,
-				$field = this.$field;
-			
 			
 			// sortable
 			if( this.settings.max != 1 ) {
 				
-				this.$values.unbind('sortable').sortable({
+				// reference
+				var self = this,
+					$values = this.$values,
+					$field = this.$field;
 					
-					items					: '> .layout',
-					handle					: '> .acf-fc-layout-handle',
-					forceHelperSize			: true,
-					forcePlaceholderSize	: true,
-					scroll					: true,
+				
+				$values.one('mouseenter', '.acf-fc-layout-handle', function( e ){
 					
-					start : function (event, ui) {
+					$values.unbind('sortable').sortable({
 					
-						acf.do_action('sortstart', ui.item, ui.placeholder);
-		        		
-		   			},
-		   			stop : function (event, ui) {
+						items					: '> .layout',
+						handle					: '> .acf-fc-layout-handle',
+						forceHelperSize			: true,
+						forcePlaceholderSize	: true,
+						scroll					: true,
 						
-						acf.do_action('sortstop', ui.item, ui.placeholder);
+						start : function (event, ui) {
 						
-						
-						// render
-						self.doFocus($field).render();
-		   			}
+							acf.do_action('sortstart', ui.item, ui.placeholder);
+			        		
+			   			},
+			   			stop : function (event, ui) {
+							
+							acf.do_action('sortstop', ui.item, ui.placeholder);
+							
+							
+							// render
+							self.doFocus($field).render();
+			   			}
+			   			
+					});
+				
 				});
 				
 			}
 			
 			
 			// set column widths
-			this.$values.find('> .layout > .acf-table').each(function(){
+			// no longer needed due to refresh action in acf.pro model
+			/*
+this.$values.find('> .layout > .acf-table').each(function(){
 			
 				acf.pro.render_table( $(this) );
 				
 			});
+*/
 			
 			
 			// disable clone inputs
@@ -882,6 +859,10 @@
 			this.$el.children('.no-value-message').hide();
 			
 			
+			// remove class
+			$html.removeClass('acf-clone');
+			
+			
 			// add row
 			this.$values.append( $html ); 
 			
@@ -955,6 +936,9 @@
 			
 				$layout.attr('data-toggle', 'open');
 				$layout.children('.acf-input-table').show();
+				
+				// refresh layout
+				acf.do_action('refresh', $layout);
 				
 			} else {
 				
@@ -1173,7 +1157,7 @@
 			// vars
 			var data = acf.prepare_for_ajax({
 				action		: 'acf/fields/gallery/get_sort_order',
-				field_key	: this.settings.key,
+				field_key	: acf.get_field_key(this.$field),
 				post_id		: acf.get('post_id'),
 				ids			: [],
 				sort		: sort
@@ -1321,7 +1305,7 @@
 			// vars
 			var data = acf.prepare_for_ajax({
 				action		: 'acf/fields/gallery/get_attachment',
-				field_key	: this.settings.key,
+				field_key	: acf.get_field_key(this.$field),
 				nonce		: acf.get('nonce'),
 				post_id		: acf.get('post_id'),
 				id			: id

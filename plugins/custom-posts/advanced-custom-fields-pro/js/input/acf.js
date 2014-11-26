@@ -348,13 +348,9 @@ var acf;
 			
 			// filter out fields
 			if( !all ) {
-			
-				$fields = $fields.filter(function(){
-					
-					return acf.apply_filters('is_field_ready_for_js', true, $(this));			
-
-				});
 				
+				$fields = acf.apply_filters('get_fields', $fields);
+								
 			}
 			
 			
@@ -1292,6 +1288,40 @@ var acf;
 		
 		    return ((elemBottom <= docViewBottom) && (elemTop >= docViewTop));
 					
+		},
+		
+		
+		/*
+		*  val
+		*
+		*  This function will update an elements value and trigger the change event if differene
+		*
+		*  @type	function
+		*  @date	16/10/2014
+		*  @since	5.0.9
+		*
+		*  @param	$el (jQuery)
+		*  @param	val (mixed)
+		*  @return	n/a
+		*/
+		
+		val: function( $el, val ){
+			
+			// vars
+			var orig = $el.val();
+			
+			
+			// update value
+			$el.val( val );
+			
+			
+			// trigger change
+			if( val != orig ) {
+				
+				$el.trigger('change');
+				
+			}
+			
 		}
 		
 	};
@@ -1742,15 +1772,26 @@ frame.on('all', function( e ) {
 		onReady: function(){
 			
 			// vars
-			var major = acf.get('wp_version');
+			var version = acf.get('wp_version');
 			
 			
-			// add class
-			if( major ) {
+			// bail early if no version
+			if( !version ) {
 				
-				$('body').addClass('acf-wp-' + major.substr(0,1));
+				return;
 				
 			}
+			
+			
+			// use only major version
+			if( typeof version == 'string' ) {
+				
+				version = version.substr(0,1);
+				
+			}
+			
+			
+			$('body').addClass('acf-wp-' + version);
 			
 		},
 		
@@ -1931,6 +1972,123 @@ frame.on('all', function( e ) {
 	});
 	
 	
+	/*
+	*  conditional_logic
+	*
+	*  description
+	*
+	*  @type	function
+	*  @date	21/02/2014
+	*  @since	3.5.1
+	*
+	*  @param	$post_id (int)
+	*  @return	$post_id (int)
+	*/
+		
+	acf.layout = acf.model.extend({
+		
+		active: 0,
+		
+		actions: {
+			'refresh': 	'refresh',
+		},
+		
+		refresh: function( $el ){
+			
+			//console.time('acf.width.render');
+			
+			// defaults
+			$el = $el || $('body');
+			
+			
+			// loop over visible fields
+			$el.find('.acf-fields:visible').each(function(){
+				
+				// vars
+				var $els = $(),
+					top = 0,
+					height = 0,
+					cell = -1;
+				
+				
+				// get fields
+				var $fields = $(this).children('.acf-field[data-width]:visible');
+				
+				
+				// bail early if no fields
+				if( !$fields.exists() ) {
+					
+					return;
+					
+				}
+				
+				
+				// reset fields
+				$fields.removeClass('acf-r0 acf-c0').css({'min-height': 0});
+				
+				
+				$fields.each(function( i ){
+					
+					// vars
+					var $el = $(this),
+						this_top = $el.position().top;
+					
+					
+					// set top
+					if( i == 0 ) {
+						
+						top = this_top;
+						
+					}
+					
+					
+					// detect new row
+					if( this_top != top ) {
+						
+						// set previous heights
+						$els.css({'min-height': (height+1)+'px'});
+						
+						// reset
+						$els = $();
+						top = $el.position().top; // don't use variable as this value may have changed due to min-height css
+						height = 0;
+						cell = -1;
+						
+					}
+					
+											
+					// increase
+					cell++;
+				
+					// set height
+					height = ($el.outerHeight() > height) ? $el.outerHeight() : height;
+				
+					// append
+					$els = $els.add( $el );
+					
+					// add classes
+					if( this_top == 0 ) {
+						
+						$el.addClass('acf-r0');
+						
+					} else if( cell == 0 ) {
+						
+						$el.addClass('acf-c0');
+						
+					}
+					
+				});
+				
+				
+			});
+			
+			//console.timeEnd('acf.width.render');
+
+			
+		}
+		
+	});
+	
 	
 	/*
 	*  conditional_logic
@@ -2045,6 +2203,10 @@ frame.on('all', function( e ) {
 				
 			}
 			
+			
+			// action for 3rd party customization
+			acf.do_action('refresh', $input);
+			
 		},
 		
 		render : function( $el ){
@@ -2058,11 +2220,15 @@ frame.on('all', function( e ) {
 			
 			
 			// get targets
-			var $targets = acf.get_fields( {}, $el );
+			var $targets = acf.get_fields( {}, $el, true );
 			
 			
 			// render fields
 			this.render_fields( $targets );
+			
+			
+			// action for 3rd party customization
+			acf.do_action('refresh', $el);
 			
 		},
 		
@@ -2078,12 +2244,6 @@ frame.on('all', function( e ) {
 				self.render_field( $(this) );
 				
 			});
-			
-			
-			// repeater hide column
-			
-			// action for 3rd party customization
-			//acf.do_action('conditional_logic_render_field');
 			
 		},
 		

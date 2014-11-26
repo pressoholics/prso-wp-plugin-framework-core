@@ -12,20 +12,8 @@
 	margin: 0 0 8px;
 }
 
-.acf-repeater .acf-row.clone {
+.acf-repeater .acf-row.acf-clone {
 	display: none !important;
-}
-
-.acf-repeater .acf-input-table > tbody > tr.ui-sortable-helper {
-	box-shadow: 0 1px 5px rgba(0,0,0,0.2);
-}
-
-.acf-repeater .acf-input-table > tbody > tr.ui-sortable-placeholder {
-	visibility: visible !important;
-}
-
-.acf-repeater .acf-input-table > tbody > tr.ui-sortable-placeholder td {
-	background: #F9F9F9;
 }
 
 .acf-repeater .acf-input-table td.remove .acf-icon {
@@ -39,10 +27,21 @@
 }
 
 
-/*
-*  Empty
-*/
+/* sortable */
+.acf-repeater .acf-input-table > tbody > tr.ui-sortable-helper {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+}
 
+.acf-repeater .acf-input-table > tbody > tr.ui-sortable-placeholder {
+	visibility: visible !important;
+}
+
+.acf-repeater .acf-input-table > tbody > tr.ui-sortable-placeholder td {
+	background: #F9F9F9;
+}
+
+
+/* empty */
 .acf-repeater.empty table thead th {
 	border-bottom: 0 none;
 }
@@ -66,7 +65,7 @@
 
 .acf-flexible-content > .no-value-message {
 	padding: 19px;
-	border: #ccc dashed 1px;
+	border: #ccc dashed 2px;
 	text-align: center;
 }
 
@@ -80,16 +79,16 @@
 
 .acf-flexible-content .layout {
 	position: relative;
-	margin: 20px 0 0;
-	
-	
-	border-radius: 0;
-   
+	margin: 20px 0;
     background: #fff;
 }
 
 .acf-flexible-content .layout:first-child {
 	margin-top: 0;
+}
+
+.acf-flexible-content .layout:last-child {
+	margin-bottom: 0;
 }
 
 .acf-flexible-content .layout .acf-fc-layout-handle {
@@ -107,6 +106,23 @@
 	
 }
 
+.acf-flexible-content .layout .fc-layout-order {
+	display: block;
+	width: 20px;
+	height: 20px;
+	border-radius: 10px;
+	
+	text-align: center;
+	line-height: 20px;
+	
+	margin: 0 5px 0 0;
+	background: #F1F1F1;
+	float: left;
+	
+	font-size: 12px;
+	color: #666;
+}
+
 .acf-flexible-content .layout.popup-open .acf-fc-layout-controlls {
 	visibility: visible !important;	
 }
@@ -117,8 +133,7 @@
 	position: absolute;
 	top: 9px;
 	right: 9px;
-	
-	z-index: 1;
+
 }
 
 .acf-flexible-content .layout:hover .acf-fc-layout-controlls {
@@ -136,9 +151,10 @@
 
 .acf-flexible-content > .values > .ui-sortable-placeholder {
 	visibility: visible !important;
-	border: #DFDFDF dashed 2px;
-	border-radius: 3px;
+	border: #ccc dashed 2px;
+
 	box-shadow: none;
+	background: transparent;
 }
 
 .acf-flexible-content .layout > .acf-input-table {
@@ -169,7 +185,7 @@
 	box-shadow: 0 0 2px rgba(0, 0, 0, 0.1);
 	
 	min-width: 135px;
-	z-index: 999;
+	z-index: 9999;
 }
 
 .acf-fc-popup .bit {
@@ -319,7 +335,7 @@
 	bottom: 45px;
 	left: 0;
 	padding: 5px;
-	overflow: scroll;
+	overflow: auto;
 }
 
 .acf-gallery .acf-gallery-attachment {
