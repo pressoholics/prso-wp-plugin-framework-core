@@ -191,7 +191,8 @@
 		
 		actions: {
 			'ready':	'initialize',
-			'append':	'initialize'
+			'append':	'initialize',
+			'show':		'show'
 		},
 		
 		events: {
@@ -205,7 +206,7 @@
 			this.$tbody = this.$el.find('tbody:first');
 			this.$clone = this.$tbody.children('tr.acf-clone');
 			
-			this.settings = acf.get_data( this.$el );
+			this.o = acf.get_data( this.$el );
 			
 		},
 		
@@ -228,7 +229,7 @@
 			
 			
 			// sortable
-			if( this.settings.max != 1 ) {
+			if( this.o.max != 1 ) {
 				
 				// reference
 				var self = this,
@@ -283,6 +284,16 @@
 			
 		},
 		
+		show: function(){
+			
+			this.$tbody.find('.acf-field:visible').each(function(){
+				
+				acf.do_action('show_field', $(this));
+				
+			});
+			
+		},
+		
 		count: function(){
 			
 			return this.$tbody.children().length - 1;
@@ -312,7 +323,7 @@
 			
 			
 			// row limit reached
-			if( this.settings.max > 0 && this.count() >= this.settings.max ) {
+			if( this.o.max > 0 && this.count() >= this.o.max ) {
 				
 				this.$el.addClass('disabled');
 				this.$el.find('> .acf-hl .acf-button').addClass('disabled');
@@ -339,9 +350,9 @@
 			
 			
 			// validate
-			if( this.settings.max > 0 && this.count() >= this.settings.max ) {
+			if( this.o.max > 0 && this.count() >= this.o.max ) {
 			
-				alert( acf._e('repeater','max').replace('{max}', this.settings.max) );
+				alert( acf._e('repeater','max').replace('{max}', this.o.max) );
 				return false;
 				
 			}
@@ -402,9 +413,9 @@
 			
 			
 			// validate
-			if( this.count() <= this.settings.min ) {
+			if( this.count() <= this.o.min ) {
 			
-				alert( acf._e('repeater','min').replace('{min}', this.settings.min) );
+				alert( acf._e('repeater','min').replace('{min}', this.o.min) );
 				return false;
 			}
 			
@@ -445,7 +456,8 @@
 		
 		actions: {
 			'ready':	'initialize',
-			'append':	'initialize'
+			'append':	'initialize',
+			'show':		'show'
 		},
 		
 		events: {
@@ -464,12 +476,12 @@
 			
 			
 			// get options
-			this.settings = acf.get_data( this.$el );
+			this.o = acf.get_data( this.$el );
 			
 			
 			// min / max
-			this.settings.min = this.settings.min || 0;
-			this.settings.max = this.settings.max || 0;
+			this.o.min = this.o.min || 0;
+			this.o.max = this.o.max || 0;
 			
 		},
 		
@@ -482,7 +494,7 @@
 		initialize: function(){
 			
 			// sortable
-			if( this.settings.max != 1 ) {
+			if( this.o.max != 1 ) {
 				
 				// reference
 				var self = this,
@@ -541,6 +553,16 @@ this.$values.find('> .layout > .acf-table').each(function(){
 			
 		},
 		
+		show: function(){
+			
+			this.$values.find('.acf-field:visible').each(function(){
+				
+				acf.do_action('show_field', $(this));
+				
+			});
+			
+		},
+		
 		render: function(){
 			
 			// update order numbers
@@ -564,7 +586,7 @@ this.$values.find('> .layout > .acf-table').each(function(){
 			
 			
 			// row limit reached
-			if( this.settings.max > 0 && this.count() >= this.settings.max ) {
+			if( this.o.max > 0 && this.count() >= this.o.max ) {
 				
 				this.$el.addClass('disabled');
 				this.$el.find('> .acf-hl .acf-button').addClass('disabled');
@@ -581,15 +603,15 @@ this.$values.find('> .layout > .acf-table').each(function(){
 		validate_add : function( layout ){
 			
 			// vadiate max
-			if( this.settings.max > 0 && this.count() >= this.settings.max ) {
+			if( this.o.max > 0 && this.count() >= this.o.max ) {
 				
 				// vars
-				var identifier	= ( this.settings.max == 1 ) ? 'layout' : 'layouts',
+				var identifier	= ( this.o.max == 1 ) ? 'layout' : 'layouts',
 					s 			= acf._e('flexible_content', 'max');
 				
 				
 				// translate
-				s = s.replace('{max}', this.settings.max);
+				s = s.replace('{max}', this.o.max);
 				s = s.replace('{identifier}', acf._e('flexible_content', identifier));
 				
 				
@@ -639,15 +661,15 @@ this.$values.find('> .layout > .acf-table').each(function(){
 		validate_remove : function( layout ){
 			
 			// vadiate min
-			if( this.settings.min > 0 && this.count() <= this.settings.min ) {
+			if( this.o.min > 0 && this.count() <= this.o.min ) {
 				
 				// vars
-				var identifier	= ( this.settings.min == 1 ) ? 'layout' : 'layouts',
+				var identifier	= ( this.o.min == 1 ) ? 'layout' : 'layouts',
 					s 			= acf._e('flexible_content', 'min') + ', ' + acf._e('flexible_content', 'remove');
 				
 				
 				// translate
-				s = s.replace('{min}', this.settings.min);
+				s = s.replace('{min}', this.o.min);
 				s = s.replace('{identifier}', acf._e('flexible_content', identifier));
 				s = s.replace('{layout}', acf._e('flexible_content', 'layout'));
 				
@@ -1017,12 +1039,12 @@ this.$values.find('> .layout > .acf-table').each(function(){
 			
 			
 			// get options
-			this.settings = acf.get_data( this.$el );
+			this.o = acf.get_data( this.$el );
 			
 			
 			// min / max
-			this.settings.min = this.settings.min || 0;
-			this.settings.max = this.settings.max || 0;
+			this.o.min = this.o.min || 0;
+			this.o.max = this.o.max || 0;
 			
 		},
 		
@@ -1128,7 +1150,7 @@ this.$values.find('> .layout > .acf-table').each(function(){
 			
 			
 			// disable select
-			if( this.settings.max > 0 && this.count() >= this.settings.max ) {
+			if( this.o.max > 0 && this.count() >= this.o.max ) {
 			
 				$a.addClass('disabled');
 				
@@ -1421,10 +1443,10 @@ this.$values.find('> .layout > .acf-table').each(function(){
 			
 		},
 		
-		add : function( image ){
+		add : function( a ){
 			
 			// validate
-			if( this.settings.max > 0 && this.count() >= this.settings.max ) {
+			if( this.o.max > 0 && this.count() >= this.o.max ) {
 			
 				acf.validation.add_warning( this.$field, acf._e('gallery', 'max'));
 				
@@ -1433,13 +1455,46 @@ this.$values.find('> .layout > .acf-table').each(function(){
 			}
 			
 			
-			// append to image data
-			image.name = this.$el.find('[data-name="ids"]').attr('name');
+			// vars
+			var thumb_url = a.url,
+				thumb_class = 'acf-gallery-attachment acf-soh',
+				filename = '',
+				name = this.$el.find('[data-name="ids"]').attr('name');
+
+			
+			// title
+			if( a.type !== 'image' && a.filename ) {
+				
+				filename = '<div class="filename">' + a.filename + '</div>';
+				
+			}
 			
 			
-			// template
-			var tmpl = acf._e('gallery', 'tmpl'),
-				html = _.template(tmpl, image);
+			// icon
+			if( !thumb_url ) {
+				
+				thumb_url = a.icon;
+				thumb_class += ' is-mime-icon';
+				
+			}
+			
+			
+			// html
+			var html = [
+			'<div class="' + thumb_class + '" data-id="' + a.id + '">',
+				'<input type="hidden" value="' + a.id + '" name="' + name + '[]">',
+				'<div class="margin" title="' + a.filename + '">',
+					'<div class="thumbnail">',
+						'<img src="' + thumb_url + '">',
+					'</div>',
+					filename,
+				'</div>',
+				'<div class="actions acf-soh-target">',
+					'<a href="#" class="acf-icon dark remove-attachment" data-id="' + a.id + '">',
+						'<i class="acf-sprite-delete"></i>',
+					'</a>',
+				'</div>',
+			'</div>'].join('');
 			
 			
 			// append
@@ -1470,9 +1525,9 @@ this.$values.find('> .layout > .acf-table').each(function(){
 				'select'	: function( attachment ){
 					
 					// override url
-					if( acf.isset(attachment, 'attributes', 'sizes', self.settings.preview_size, 'url') ) {
+					if( acf.isset(attachment, 'attributes', 'sizes', self.o.preview_size, 'url') ) {
 			    	
-				    	attachment.url = attachment.attributes.sizes[ self.settings.preview_size ].url;
+				    	attachment.url = attachment.attributes.sizes[ self.o.preview_size ].url;
 				    	
 			    	}
 			    	
@@ -1566,7 +1621,7 @@ this.$values.find('> .layout > .acf-table').each(function(){
 		add_attachment: function( e ){
 			
 			// validate
-			if( this.settings.max > 0 && this.count() >= this.settings.max ) {
+			if( this.o.max > 0 && this.count() >= this.o.max ) {
 			
 				acf.validation.add_warning( this.$field, acf._e('gallery', 'max'));
 				
@@ -1576,8 +1631,8 @@ this.$values.find('> .layout > .acf-table').each(function(){
 			
 			
 			// vars
-			var library = this.settings.library,
-				preview_size = this.settings.preview_size;
+			var library = this.o.library,
+				preview_size = this.o.preview_size;
 			
 			
 			// reference
@@ -1586,46 +1641,51 @@ this.$values.find('> .layout > .acf-table').each(function(){
 			
 			// popup
 			var frame = acf.media.popup({
-				'title'			: acf._e('gallery', 'select'),
-				'mode'			: 'select',
-				'type'			: 'all',
-				'multiple'		: 'add',
-				'library'		: library,
-				'select'		: function( attachment, i ) {
+				title:		acf._e('gallery', 'select'),
+				mode:		'select',
+				type:		'all',
+				multiple:	'add',
+				library:	library,
+				
+				select: function( attachment, i ) {
+					
+					// vars
+					var atts = attachment.attributes;
+					
 					
 					// is image already in gallery?
-					if( self.get_attachment(attachment.id).exists() ) {
+					if( self.get_attachment(atts.id).exists() ) {
 					
 						return;
 						
 					}
 					
-					
+					//console.log( attachment );
+			    	
 			    	// vars
-			    	var image = {
-				    	'id'	: attachment.id,
-				    	'url'	: attachment.attributes.url
+			    	var a = {
+				    	id:			atts.id,
+				    	type:		atts.type,
+				    	icon:		atts.icon,
+				    	filename:	atts.filename,
+				    	url:		''
 			    	};
 			    	
 			    	
-			    	// file?
-				    if( attachment.attributes.type != 'image' ) {
-				    
-					    image.url = attachment.attributes.icon;
-					    
+			    	// type
+			    	if( a.type === 'image' ) {
+				    	
+				    	a.url = acf.maybe_get(atts, 'sizes', preview_size, 'url') || atts.url;
+				    	
+			    	} else {
+				    	
+				    	a.url = acf.maybe_get(atts, 'thumb', 'src') || '';
+				    	
 				    }
 				    
 				    
-				    // is preview size available?
-			    	if( acf.isset(attachment, 'attributes', 'sizes', preview_size) ) {
-			    	
-				    	image.url = attachment.attributes.sizes[ preview_size ].url;
-				    	
-			    	}
-				    
-				    
 			    	// add file to field
-			        self.add( image );
+			        self.add( a );
 					
 				}
 			});

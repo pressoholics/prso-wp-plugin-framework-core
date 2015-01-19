@@ -151,6 +151,15 @@
 				},
 				results: function(data, page){
 					
+					// allow null return
+					if( !data ) {
+						
+						data = [];
+						
+					}
+					
+					
+					// return
 					return {
 						results	: data
 					};
@@ -164,22 +173,31 @@
 					
 					var i = 0;
 					
-					$.each(data, function(k, v){
+					// allow null return
+					if( !data ) {
 						
-						l = 1;
+						data = [];
 						
-						if( typeof v.children !== 'undefined' ) {
+					} else {
+						
+						$.each(data, function(k, v){
 							
-							l = v.children.length;
+							l = 1;
 							
-						}
+							if( typeof v.children !== 'undefined' ) {
+								
+								l = v.children.length;
+								
+							}
+							
+							i += l;
+							
+						});
 						
-						i += l;
-						
-					});
+					}
 					
 					
-					// vars
+					// return
 					return {
 						results	: data,
 						more	: (i >= 20)
@@ -287,12 +305,9 @@
 	acf.fields.select = acf.field.extend({
 		
 		type: 'select',
+		pagination: false,
 		
 		$select: null,
-		settings: {
-			'action':		'',
-			'pagination':	false
-		},
 		
 		actions: {
 			'ready':	'render',
@@ -314,33 +329,35 @@
 			}
 			
 			
-			// merge in select's settings
-			$.extend(this.settings, acf.get_data( this.$select ));
+			// get options
+			this.o = acf.get_data( this.$select );
 			
 			
-			// update action based on type			
-			this.settings.action = 'acf/fields/' + this.type + '/query';
+			// customize o
+			this.o.pagination = this.pagination;
+			this.o.key = this.$field.data('key');	
+			this.o.action = 'acf/fields/' + this.type + '/query';
 			
 		},
 		
 		render: function(){
 			
 			// validate ui
-			if( !this.$select.exists() || !this.settings.ui ) {
+			if( !this.$select.exists() || !this.o.ui ) {
 				
 				return false;
 				
 			}
 			
 			
-			add_select2( this.$select, this.settings );
+			add_select2( this.$select, this.o );
 			
 		},
 		
 		remove: function(){
 			
 			// validate ui
-			if( !this.$select.exists() || !this.settings.ui ) {
+			if( !this.$select.exists() || !this.o.ui ) {
 				
 				return false;
 				
@@ -356,7 +373,7 @@
 	
 	// taxonomy
 	acf.fields.taxonomy = acf.fields.select.extend({
-		
+
 		type: 'taxonomy'
 		
 	});
@@ -374,18 +391,16 @@
 	acf.fields.post_object = acf.fields.select.extend({
 		
 		type: 'post_object',
-		
-		settings: {
-			'pagination':	true
-		}
+		pagination: true
 		
 	});
 	
 	
 	// page_link
-	acf.fields.page_link = acf.fields.post_object.extend({
+	acf.fields.page_link = acf.fields.select.extend({
 		
 		type: 'page_link',
+		pagination: true
 		
 	});
 	
